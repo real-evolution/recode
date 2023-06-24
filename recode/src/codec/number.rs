@@ -31,9 +31,15 @@ macro_rules! impl_int {
 
 impl_int!(i8);
 impl_int!(u8);
+
 impl_int!(i16);
 impl_int!(u16);
+
 impl_int!(i32);
 impl_int!(u32);
+
 impl_int!(i64);
 impl_int!(u64);
+
+impl_int!(f32);
+impl_int!(f64);
