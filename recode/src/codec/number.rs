@@ -1,9 +1,7 @@
-use std::convert::Infallible;
-
 macro_rules! impl_int {
     ($t:ty) => {
         paste::paste! {
-            impl crate::Encoder for $t {
+            impl crate::encode::Encoder for $t {
                 type Input = Self;
 
                 fn encode<B: bytes::BufMut>(
@@ -15,13 +13,23 @@ macro_rules! impl_int {
                 }
             }
 
-            impl crate::Decoder for $t {
+            impl crate::decode::Decoder for $t {
                 type Output = Self;
-                type Error = Infallible;
+                type Error = crate::error::Error;
 
                 fn decode<B: bytes::Buf>(
                     buf: &mut B,
                 ) -> Result<Self::Output, Self::Error> {
+                    const FULL_EN: usize = std::mem::size_of::<$t>();
+
+                    if buf.remaining() < FULL_EN {
+                        return Err(crate::error::Error::BytesNeeded {
+                            needed: FULL_EN - buf.remaining(),
+                            full_len: FULL_EN,
+                            available: buf.remaining(),
+                        });
+                    }
+
                     Ok(buf.[<get_ $t>]())
                 }
             }
