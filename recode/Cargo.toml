@@ -1,0 +1,13 @@
+[package]
+name = "recode"
+version = "0.1.0"
+description = "Reusable encoding/decoding constructs for Rust"
+keywords = ["encode", "decode", "serialize", "deserliaze", "i/o"]
+edition.workspace = true
+authors.workspace = true
+readme.workspace = true
+publish.workspace = true
+repository.workspace = true
+license-file.workspace = true
+
+[dependencies]
