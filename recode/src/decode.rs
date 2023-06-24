@@ -16,5 +16,5 @@ pub trait Decoder {
     ///
     /// # Returns
     /// The decoded value.
-    fn decode<B: Buf>(buf: &B) -> Result<Self::Output, Self::Error>;
+    fn decode<B: Buf>(buf: &mut B) -> Result<Self::Output, Self::Error>;
 }
