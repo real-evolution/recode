@@ -6,3 +6,5 @@ pub mod error;
 pub use decode::Decoder;
 pub use encode::Encoder;
 pub use error::{Error, Result};
+
+pub use bytes;
