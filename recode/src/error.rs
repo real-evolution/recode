@@ -16,3 +16,9 @@ pub enum Error {
         available: usize,
     },
 }
+
+impl From<std::convert::Infallible> for Error {
+    fn from(_: std::convert::Infallible) -> Self {
+        unreachable!()
+    }
+}
