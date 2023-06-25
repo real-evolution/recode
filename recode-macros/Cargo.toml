@@ -1,0 +1,13 @@
+[package]
+name = "recode-macros"
+version = "0.1.0"
+description = "`recode` macros. Not intended to be used directly"
+keywords = ["encode", "decode", "serialize", "deserliaze", "i/o"]
+edition.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+license-file.workspace = true
+
+[lib]
+proc-macro = true

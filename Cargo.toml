@@ -1,5 +1,5 @@
 [workspace]
-members = ["recode"]
+members = ["recode", "recode-macros"]
 
 [workspace.package]
 edition = "2021"
