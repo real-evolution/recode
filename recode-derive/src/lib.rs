@@ -36,4 +36,4 @@ macro_rules! define_proc_macro {
     };
 }
 
-define_proc_macro!(Decoder[]);
+define_proc_macro!(Decoder[decoder, skip, skip_if, map]);
