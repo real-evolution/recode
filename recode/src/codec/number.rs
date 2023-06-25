@@ -2,14 +2,15 @@ macro_rules! impl_int {
     ($t:ty) => {
         paste::paste! {
             impl crate::encode::Encoder for $t {
-                type Input = Self;
+                type Error = std::convert::Infallible;
 
                 fn encode<B: bytes::BufMut>(
                     &self,
-                    input: Self::Input,
                     buf: &mut B,
-                ) {
-                    buf.[<put_ $t>](input)
+                ) -> Result<(), Self::Error> {
+                    buf.[<put_ $t>](*self);
+
+                    Ok(())
                 }
             }
 
