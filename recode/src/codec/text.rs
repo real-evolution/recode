@@ -1,6 +1,5 @@
-use super::length::LengthTraits;
-use crate::decode::Decoder;
-use crate::error::Error;
+use super::LengthTraits;
+use crate::{Decoder, Error};
 
 pub type AsciiText<L = ()> = Text<Ascii, L>;
 pub type Utf8Text<L = ()> = Text<Utf8, L>;

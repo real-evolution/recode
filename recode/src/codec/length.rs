@@ -1,5 +1,4 @@
-use crate::decode::Decoder;
-use crate::error::{Error, Result};
+use crate::{Decoder, Error, Result};
 
 pub trait LengthTraits: Decoder<Output = Self> + Sized
 where

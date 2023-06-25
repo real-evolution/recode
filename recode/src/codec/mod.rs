@@ -1,3 +1,6 @@
-pub mod number;
-pub mod text;
-pub mod length;
+mod number;
+mod text;
+mod length;
+
+pub use text::*;
+pub use length::*;

@@ -20,7 +20,7 @@ pub enum Error {
     IntConversion(#[from] std::num::TryFromIntError),
 
     #[error("text: {0}")]
-    Text(#[from] crate::codec::text::TextError),
+    Text(#[from] crate::codec::TextError),
 }
 
 impl From<std::convert::Infallible> for Error {
