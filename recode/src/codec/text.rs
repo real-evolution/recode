@@ -1,7 +1,10 @@
 use super::LengthTraits;
 use crate::{Decoder, Error};
 
+/// A type alias for ASCII-encoded [`Text`].
 pub type AsciiText<L = ()> = Text<Ascii, L>;
+
+/// A type alias for UTF8-encoded [`Text`].
 pub type Utf8Text<L = ()> = Text<Utf8, L>;
 
 /// A marker type to indicate that [`Text`] object is encoded/decoded as ASCII.
