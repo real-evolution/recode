@@ -1,161 +1,93 @@
+use super::Buffer;
 use crate::{Decoder, Encoder, Error};
-
-/// A type alias for ASCII-encoded [`Text`].
-pub type AsciiText<L = ()> = Text<Ascii, L>;
-
-/// A type alias for UTF8-encoded [`Text`].
-pub type Utf8Text<L = ()> = Text<Utf8, L>;
 
 /// A marker type to indicate that [`Text`] object is encoded/decoded as ASCII.
 #[derive(Debug)]
-pub struct Ascii;
+pub struct Ascii<L = ()>(Buffer<L>);
 
 /// A marker type to indicate that [`Text`] object is encoded/decoded as UTf-8.
 #[derive(Debug)]
-pub struct Utf8;
+pub struct Utf8<L = ()>(Buffer<L>);
 
-/// A wrapper type for textual data.
-///
-/// This type is a wrapper type for textual data. It is used to allow encoding
-/// and decoding of textual data in a generic way.
-///
-/// # Type parameters
-/// - `C`: Text encoding/decoding marker.
-/// - `L`: If not [`()`], it should be a numerical type that implements
-/// [`super::length::LengthTraits`] that represent the length prefix of the text.
-///
-#[derive(Debug, Clone)]
-pub struct Text<C = Utf8, L = ()> {
-    inner: bytes::Bytes,
-    _marker: std::marker::PhantomData<(C, L)>,
-}
-
-impl<C, L> Text<C, L> {
-    /// Creates a new [`Text`] object from a [`bytes::Bytes`] instance.
-    ///
-    /// # Parameters
-    /// - `bytes`: The bytes to wrap.
-    ///
-    /// # Returns
-    /// A new [`Text`] object.
-    fn from_bytes(bytes: bytes::Bytes) -> Self {
-        Self {
-            inner: bytes,
-            _marker: std::marker::PhantomData,
-        }
-    }
-}
-
-impl Decoder for Ascii {
-    type Output = bytes::Bytes;
-    type Error = TextError;
+impl<L> Decoder for Ascii<L>
+where
+    Buffer<L>: Decoder<Output = Buffer<L>>,
+    Error: From<<Buffer<L> as Decoder>::Error>,
+{
+    type Output = Self;
+    type Error = Error;
 
     fn decode<B: bytes::Buf>(buf: &mut B) -> Result<Self::Output, Self::Error> {
-        let buf = buf.copy_to_bytes(buf.remaining());
+        let inner = Buffer::<L>::decode(buf)?;
 
-        if !buf.is_ascii() {
+        if !inner.is_ascii() {
             return Err(TextError::Ascii("invalid ascii data"))?;
         }
 
-        Ok(buf)
+        Ok(Self(inner))
     }
 }
 
-impl Decoder for Utf8 {
-    type Output = bytes::Bytes;
-    type Error = TextError;
-
-    fn decode<B: bytes::Buf>(buf: &mut B) -> Result<Self::Output, Self::Error> {
-        let buf = buf.copy_to_bytes(buf.remaining());
-
-        _ = std::str::from_utf8(buf.as_ref())?;
-
-        Ok(buf)
-    }
-}
-
-impl<C> Decoder for Text<C>
+impl<L> Encoder for Ascii<L>
 where
-    C: Decoder<Output = bytes::Bytes>,
-    Error: From<C::Error>,
+    Buffer<L>: Encoder,
+    Error: From<<Buffer<L> as Encoder>::Error>,
+{
+    type Error = Error;
+
+    #[inline(always)]
+    fn encode<B: bytes::BufMut>(&self, buf: &mut B) -> Result<(), Self::Error> {
+        Ok(self.0.encode(buf)?)
+    }
+}
+
+impl<L> Decoder for Utf8<L>
+where
+    Buffer<L>: Decoder<Output = Buffer<L>>,
+    Error: From<<Buffer<L> as Decoder>::Error>,
 {
     type Output = Self;
     type Error = Error;
 
     fn decode<B: bytes::Buf>(buf: &mut B) -> Result<Self::Output, Self::Error> {
-        let bytes = C::decode(buf)?;
+        let inner = Buffer::<L>::decode(buf)?;
 
-        Ok(Self::from_bytes(bytes))
+        _ = std::str::from_utf8(inner.as_ref()).map_err(TextError::Utf8)?;
+
+        Ok(Self(inner))
     }
 }
 
-impl<C> Encoder for Text<C> {
-    type Error = Error;
-
-    fn encode<B: bytes::BufMut>(&self, buf: &mut B) -> Result<(), Self::Error> {
-        buf.put(self.inner.as_ref());
-
-        Ok(())
-    }
-}
-
-impl<C, L> Decoder for Text<C, L>
+impl<L> Encoder for Utf8<L>
 where
-    C: Decoder<Output = bytes::Bytes>,
-    L: Decoder,
-    Error: From<C::Error>
-        + From<<L as Decoder>::Error>
-        + From<<usize as TryFrom<L::Output>>::Error>,
-    usize: TryFrom<L::Output>,
-{
-    type Output = Self;
-    type Error = Error;
-
-    fn decode<B: bytes::Buf>(buf: &mut B) -> Result<Self::Output, Self::Error> {
-        let len: usize = L::decode(buf)?.try_into()?;
-
-        if buf.remaining() < len {
-            return Err(Error::BytesNeeded {
-                needed: len - buf.remaining(),
-                full_len: len,
-                available: buf.remaining(),
-            });
-        }
-
-        let buf = C::decode(&mut buf.copy_to_bytes(len))?;
-
-        Ok(Self::from_bytes(buf))
-    }
-}
-
-impl<C, L> Encoder for Text<C, L>
-where
-    L: Encoder + TryFrom<usize>,
-    Error: From<<L as Encoder>::Error> + From<<L as TryFrom<usize>>::Error>,
+    Buffer<L>: Encoder,
+    Error: From<<Buffer<L> as Encoder>::Error>,
 {
     type Error = Error;
 
+    #[inline(always)]
     fn encode<B: bytes::BufMut>(&self, buf: &mut B) -> Result<(), Self::Error> {
-        let len = L::try_from(self.inner.len())?;
-
-        len.encode(buf)?;
-        buf.put(self.inner.as_ref());
-
-        Ok(())
+        Ok(self.0.encode(buf)?)
     }
 }
 
-impl<C, L> AsRef<[u8]> for Text<C, L> {
-    #[inline(always)]
-    fn as_ref(&self) -> &[u8] {
-        self.inner.as_ref()
+impl<L> std::ops::Deref for Ascii<L> {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        let buf = self.0.deref();
+
+        unsafe { std::str::from_utf8_unchecked(buf.as_ref()) }
     }
 }
 
-impl<C, L> AsRef<str> for Text<C, L> {
-    #[inline(always)]
-    fn as_ref(&self) -> &str {
-        unsafe { std::str::from_utf8_unchecked(self.inner.as_ref()) }
+impl<L> std::ops::Deref for Utf8<L> {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        let buf = self.0.deref();
+
+        unsafe { std::str::from_utf8_unchecked(buf.as_ref()) }
     }
 }
 
