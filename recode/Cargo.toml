@@ -14,3 +14,15 @@ license-file.workspace = true
 bytes = { version = "1" }
 paste = { version = "1" }
 thiserror = { version = "1" }
+
+# project dependencies
+recode-derive = { version = "0", path = "../recode-derive", optional = true }
+
+[dev-dependencies]
+recode-derive = { version = "0", path = "../recode-derive" }
+
+[features]
+default = ["derive"]
+
+# Provide `Deocder/Encoder` derive macros
+derive = ["recode-derive"]
