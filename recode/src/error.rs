@@ -15,6 +15,9 @@ pub enum Error {
         full_len: usize,
         available: usize,
     },
+
+    #[error("text: {0}")]
+    Text(#[from] crate::codec::text::TextError),
 }
 
 impl From<std::convert::Infallible> for Error {
