@@ -1,5 +1,5 @@
 [package]
-name = "recode-macros"
+name = "recode-derive"
 version = "0.1.0"
 description = "`recode` macros. Not intended to be used directly"
 keywords = ["encode", "decode", "serialize", "deserliaze", "i/o"]
