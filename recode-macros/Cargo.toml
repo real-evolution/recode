@@ -11,3 +11,11 @@ license-file.workspace = true
 
 [lib]
 proc-macro = true
+
+[dependencies]
+darling = { version = "0" }
+paste = { version = "1" }
+proc-macro2 = { version = "1" }
+proc-macro-error = { version = "1" }
+quote = { version = "1" }
+syn = { version = "2", features = ["full"] }
