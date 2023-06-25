@@ -1,4 +1,4 @@
-use crate::{Decoder, Error};
+use crate::{Decoder, Encoder, Error};
 
 /// A type alias for ASCII-encoded [`Text`].
 pub type AsciiText<L = ()> = Text<Ascii, L>;
@@ -89,6 +89,16 @@ where
     }
 }
 
+impl<C> Encoder for Text<C> {
+    type Error = Error;
+
+    fn encode<B: bytes::BufMut>(&self, buf: &mut B) -> Result<(), Self::Error> {
+        buf.put(self.inner.as_ref());
+
+        Ok(())
+    }
+}
+
 impl<C, L> Decoder for Text<C, L>
 where
     C: Decoder<Output = bytes::Bytes>,
@@ -115,6 +125,23 @@ where
         let buf = C::decode(&mut buf.copy_to_bytes(len))?;
 
         Ok(Self::from_bytes(buf))
+    }
+}
+
+impl<C, L> Encoder for Text<C, L>
+where
+    L: Encoder + TryFrom<usize>,
+    Error: From<<L as Encoder>::Error> + From<<L as TryFrom<usize>>::Error>,
+{
+    type Error = Error;
+
+    fn encode<B: bytes::BufMut>(&self, buf: &mut B) -> Result<(), Self::Error> {
+        let len = L::try_from(self.inner.len())?;
+
+        len.encode(buf)?;
+        buf.put(self.inner.as_ref());
+
+        Ok(())
     }
 }
 
