@@ -1,4 +1,5 @@
 mod decoder;
+mod field;
 
 use darling::{FromDeriveInput, ToTokens};
 use proc_macro::TokenStream;

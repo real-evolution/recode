@@ -2,26 +2,17 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::parse::{Parse, Parser};
 
+use crate::field::RecodeField;
+
 #[derive(Debug, darling::FromDeriveInput)]
 #[darling(forward_attrs(allow, doc, cfg))]
 #[darling(attributes(decoder), supports(struct_named))]
 pub(super) struct Decoder {
     ident: syn::Ident,
     generics: syn::Generics,
-    data: darling::ast::Data<(), DecoderField>,
+    data: darling::ast::Data<(), RecodeField>,
     error: Option<syn::Type>,
     buffer_name: Option<syn::Ident>,
-}
-
-#[derive(Debug, darling::FromField)]
-#[darling(attributes(decoder))]
-struct DecoderField {
-    ident: Option<syn::Ident>,
-    ty: syn::Type,
-    #[darling(default)]
-    skip: bool,
-    skip_if: Option<syn::Expr>,
-    map: Option<syn::Expr>,
 }
 
 impl darling::ToTokens for Decoder {
@@ -51,7 +42,7 @@ impl darling::ToTokens for Decoder {
             .expect("only structs are supported")
             .fields;
 
-        let field_exprs = fields.iter().map(|f| f.to_field_expr(&buffer_name));
+        let field_exprs = fields.iter().map(|f| f.to_decode_expr(&buffer_name));
 
         tokens.extend(quote! {
             impl #imp recode::Decoder for #ident #ty #wher {
@@ -67,47 +58,5 @@ impl darling::ToTokens for Decoder {
                 }
             }
         });
-    }
-}
-
-impl DecoderField {
-    fn ident(&self) -> &syn::Ident {
-        self.ident
-            .as_ref()
-            .expect("only named fields are currently supported")
-    }
-
-    fn map_expr(&self) -> syn::Expr {
-        self.map
-            .clone()
-            .unwrap_or(syn::Expr::parse.parse2(quote!(|i| i)).unwrap())
-    }
-
-    fn to_field_expr(
-        &self,
-        buf_ident: &syn::Ident,
-    ) -> proc_macro2::TokenStream {
-        let ident = self.ident();
-        let ty = &self.ty;
-
-        if self.skip {
-            return quote! ( #ident: Default::default() );
-        }
-
-        let map = self.map_expr();
-
-        if let Some(ref skip_if) = self.skip_if {
-            quote! {
-                #ident: #skip_if {
-                    Default::default()
-                } else {
-                    <#ty as recode::Decoder>::decode(#buf_ident).map(#map)?
-                }
-            }
-        } else {
-            quote::quote! {
-                #ident:  <#ty as recode::Decoder>::decode(#buf_ident).map(#map)?
-            }
-        }
     }
 }
