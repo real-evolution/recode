@@ -1,4 +1,3 @@
-use super::LengthTraits;
 use crate::{Decoder, Error};
 
 /// A type alias for ASCII-encoded [`Text`].
@@ -93,25 +92,26 @@ where
 impl<C, L> Decoder for Text<C, L>
 where
     C: Decoder<Output = bytes::Bytes>,
-    L: LengthTraits,
+    L: Decoder,
     Error: From<C::Error>
         + From<<L as Decoder>::Error>
-        + From<<usize as TryFrom<L>>::Error>,
-    usize: TryFrom<L>,
+        + From<<usize as TryFrom<L::Output>>::Error>,
+    usize: TryFrom<L::Output>,
 {
     type Output = Self;
     type Error = Error;
 
     fn decode<B: bytes::Buf>(buf: &mut B) -> Result<Self::Output, Self::Error> {
-        if buf.remaining() < L::BYTE_COUNT {
+        let len: usize = L::decode(buf)?.try_into()?;
+
+        if buf.remaining() < len {
             return Err(Error::BytesNeeded {
-                needed: L::BYTE_COUNT - buf.remaining(),
-                full_len: L::BYTE_COUNT,
+                needed: len - buf.remaining(),
+                full_len: len,
                 available: buf.remaining(),
             });
         }
 
-        let len = L::decode_usize(buf)?;
         let buf = C::decode(&mut buf.copy_to_bytes(len))?;
 
         Ok(Self::from_bytes(buf))
