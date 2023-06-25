@@ -1,1 +1,1 @@
-mod number;
+pub mod number;

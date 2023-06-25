@@ -49,5 +49,8 @@ impl_int!(u32);
 impl_int!(i64);
 impl_int!(u64);
 
+impl_int!(i128);
+impl_int!(u128);
+
 impl_int!(f32);
 impl_int!(f64);
