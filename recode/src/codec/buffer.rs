@@ -31,6 +31,19 @@ impl<L> Buffer<L> {
             _marker: Default::default(),
         }
     }
+
+    /// Creates a new [`Buffer<L>`] object from a [`&'static [u8]`].
+    ///
+    /// This is a shorthand for [`Buffer::new`]`(`[`bytes::Bytes::from_static`]`(`[`&'static [u8]`]`))`.
+    ///
+    /// # Parameters
+    /// - `bytes`: The [`&'static [u8]`] instance to wrap.
+    ///
+    /// # Returns
+    /// A new [`Buffer<L>`] object.
+    pub fn from_static(bytes: &'static [u8]) -> Self {
+        Self::new(bytes.into())
+    }
 }
 
 impl Decoder for Buffer {
@@ -101,5 +114,11 @@ impl<L> Deref for Buffer<L> {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
+    }
+}
+
+impl<L> From<&'static [u8]> for Buffer<L> {
+    fn from(value: &'static [u8]) -> Self {
+        Self::from_static(value)
     }
 }

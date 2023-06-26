@@ -46,6 +46,14 @@ macro_rules! define_encoding {
                 unsafe { std::str::from_utf8_unchecked(buf.as_ref()) }
             }
         }
+
+        impl<L> From<&'static str> for $name<L> {
+            fn from(value: &'static str) -> Self {
+                let buf = Buffer::from_static(value.as_bytes());
+
+                Self(buf)
+            }
+        }
     };
 }
 
