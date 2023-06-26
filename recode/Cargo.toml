@@ -15,6 +15,9 @@ bytes = { version = "1" }
 paste = { version = "1" }
 thiserror = { version = "1" }
 
+# Enable support for whole-byte types from [`ux`] crate
+ux = { version = "0", optional = true }
+
 # project dependencies
 recode-derive = { version = "0", path = "../recode-derive", optional = true }
 
@@ -22,7 +25,7 @@ recode-derive = { version = "0", path = "../recode-derive", optional = true }
 recode-derive = { version = "0", path = "../recode-derive" }
 
 [features]
-default = ["derive"]
+default = ["derive", "ux"]
 
 # Provide `Deocder/Encoder` derive macros
 derive = ["recode-derive"]
