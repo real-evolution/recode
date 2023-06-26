@@ -1,4 +1,4 @@
-use syn::parse::{Parse, Parser};
+use proc_macro2::TokenStream;
 
 #[derive(Debug, darling::FromField)]
 #[darling(attributes(decoder))]
@@ -12,22 +12,13 @@ pub(crate) struct RecodeField {
 }
 
 impl RecodeField {
-    fn ident(&self) -> &syn::Ident {
+    pub(crate) fn ident(&self) -> &syn::Ident {
         self.ident
             .as_ref()
             .expect("only named fields are currently supported")
     }
 
-    fn map_expr(&self) -> syn::Expr {
-        self.map
-            .clone()
-            .unwrap_or(syn::Expr::parse.parse2(quote::quote!(|i| i)).unwrap())
-    }
-
-    pub(crate) fn to_decode_expr(
-        &self,
-        buf_ident: &syn::Ident,
-    ) -> proc_macro2::TokenStream {
+    pub(crate) fn to_decode_stmt(&self, buf_ident: &syn::Ident) -> TokenStream {
         let ident = self.ident();
         let ty = &self.ty;
 
@@ -35,19 +26,23 @@ impl RecodeField {
             return quote::quote! ( #ident: Default::default() );
         }
 
-        let map = self.map_expr();
+        let map = if let Some(ref map) = self.map {
+            quote::quote!(.map(#map))
+        } else {
+            TokenStream::new()
+        };
 
         if let Some(ref skip_if) = self.skip_if {
             quote::quote! {
-                #ident: #skip_if {
+                let #ident = #skip_if {
                     Default::default()
                 } else {
-                    <#ty as recode::Decoder>::decode(#buf_ident).map(#map)?
+                    <#ty as recode::Decoder>::decode(#buf_ident) #map ?
                 }
             }
         } else {
             quote::quote! {
-                #ident:  <#ty as recode::Decoder>::decode(#buf_ident).map(#map)?
+                let #ident = <#ty as recode::Decoder>::decode(#buf_ident) #map ?
             }
         }
     }

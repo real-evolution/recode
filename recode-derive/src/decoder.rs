@@ -42,7 +42,9 @@ impl darling::ToTokens for Decoder {
             .expect("only structs are supported")
             .fields;
 
-        let field_exprs = fields.iter().map(|f| f.to_decode_expr(&buffer_name));
+        let field_names = fields.iter().map(|f| f.ident());
+        let field_exprs =
+            fields.iter().map(|&f| f.to_decode_stmt(&buffer_name));
 
         tokens.extend(quote! {
             impl #imp recode::Decoder for #ident #ty #wher {
@@ -52,8 +54,12 @@ impl darling::ToTokens for Decoder {
                 fn decode<B: recode::bytes::Buf>(#buffer_name: &mut B)
                     -> Result<Self::Output, Self::Error>
                 {
+                    use recode::Decoder;
+
+                    #( #field_exprs; )*
+
                     Ok(Self {
-                        #(#field_exprs),*
+                        #(#field_names), *
                     })
                 }
             }
