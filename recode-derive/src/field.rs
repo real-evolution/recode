@@ -46,4 +46,32 @@ impl RecodeField {
             }
         }
     }
+
+    pub(crate) fn to_encode_stmt(&self, buf_ident: &syn::Ident) -> TokenStream {
+        let ident = self.ident();
+
+        if self.skip {
+            return TokenStream::new();
+        }
+
+        let mapped_encode = if let Some(ref map) = self.map {
+            quote::quote! {
+                ((#map)(#ident)).encode(#buf_ident)?;
+            }
+        } else {
+            quote::quote! {
+                #ident.encode(#buf_ident)?;
+            }
+        };
+
+        if let Some(ref skip_if) = self.skip_if {
+            quote::quote! {
+                if !(#skip_if) {
+                    #mapped_encode
+                }
+            }
+        } else {
+            mapped_encode
+        }
+    }
 }

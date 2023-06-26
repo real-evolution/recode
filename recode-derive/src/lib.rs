@@ -1,4 +1,5 @@
 mod decoder;
+mod encoder;
 mod field;
 
 use darling::{FromDeriveInput, ToTokens};
@@ -13,7 +14,12 @@ macro_rules! emit_impl_or_error {
     };
 }
 
-#[proc_macro_derive(Decoder, attributes(decoder, skip, skip_if, map))]
+#[proc_macro_derive(Decoder, attributes(decoder))]
 pub fn derive_decoder(input: TokenStream) -> TokenStream {
     emit_impl_or_error!(decoder::Decoder[input]).into()
+}
+
+#[proc_macro_derive(Encoder, attributes(encoder))]
+pub fn derive_encoder(input: TokenStream) -> TokenStream {
+    emit_impl_or_error!(encoder::Encoder[input]).into()
 }
