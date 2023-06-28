@@ -1,40 +1,67 @@
+use darling::util::Flag;
 use proc_macro2::TokenStream;
-use quote::quote;
-use syn::parse::{Parse, Parser};
-
-use crate::field::RecodeField;
 
 #[derive(Debug, darling::FromDeriveInput)]
 #[darling(forward_attrs(allow, doc, cfg))]
-#[darling(attributes(decoder), supports(struct_named))]
-pub(super) struct Decoder {
-    ident: syn::Ident,
-    generics: syn::Generics,
-    data: darling::ast::Data<(), RecodeField>,
+#[darling(attributes(recode), supports(struct_named))]
+pub(crate) struct Decoder {
+    pub(crate) ident: syn::Ident,
+    pub(crate) generics: syn::Generics,
+    pub(crate) data: darling::ast::Data<(), DecoderField>,
+    #[darling(default)]
+    pub(crate) decoder: DecoderOpts,
+}
+
+#[derive(Clone, Debug, Default, darling::FromMeta)]
+#[darling(default)]
+pub(crate) struct DecoderOpts {
+    #[darling(default = "Flag::present")]
+    enable: Flag,
+    #[darling(default = r#"crate::util::default_error_type"#)]
     error: Option<syn::Type>,
+    #[darling(default = r#"crate::util::default_buffer_name"#)]
     buffer_name: Option<syn::Ident>,
+}
+
+#[derive(Debug, darling::FromField)]
+#[darling(attributes(recode))]
+pub(crate) struct DecoderField {
+    pub(crate) ident: Option<syn::Ident>,
+    pub(crate) ty: syn::Type,
+    #[darling(default)]
+    pub(crate) decoder: DecoderFieldOpts,
+}
+
+#[derive(Clone, Debug, Default, darling::FromMeta)]
+#[darling(default)]
+pub(crate) struct DecoderFieldOpts {
+    skip: Flag,
+    skip_if: Option<syn::Expr>,
+    map: Option<syn::Expr>,
 }
 
 impl darling::ToTokens for Decoder {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Decoder {
-            ref ident,
-            ref generics,
-            ref data,
-            ref error,
-            ref buffer_name,
-        } = *self;
+            ident,
+            generics,
+            data,
+            decoder,
+        } = self;
+
+        let DecoderOpts {
+            enable,
+            error,
+            buffer_name,
+        } = decoder;
+
+        if !enable.is_present() {
+            return;
+        }
 
         let (imp, ty, wher) = generics.split_for_impl();
-
-        let error = error.clone().unwrap_or(
-            syn::Type::parse
-                .parse2(quote!(Box<dyn std::error::Error>))
-                .unwrap(),
-        );
-
-        let buffer_name =
-            buffer_name.clone().unwrap_or(quote::format_ident!("__buf"));
+        let error = error.as_ref().unwrap();
+        let buffer_name = buffer_name.as_ref().unwrap();
 
         let fields: Vec<_> = data
             .as_ref()
@@ -43,10 +70,9 @@ impl darling::ToTokens for Decoder {
             .fields;
 
         let field_names = fields.iter().map(|f| f.ident());
-        let field_exprs =
-            fields.iter().map(|&f| f.to_decode_stmt(&buffer_name));
+        let field_exprs = fields.iter().map(|&f| f.to_decode_stmt(buffer_name));
 
-        tokens.extend(quote! {
+        tokens.extend(quote::quote! {
             impl #imp recode::Decoder for #ident #ty #wher {
                 type Output = Self;
                 type Error = #error;
@@ -64,5 +90,45 @@ impl darling::ToTokens for Decoder {
                 }
             }
         });
+    }
+}
+
+impl DecoderField {
+    fn ident(&self) -> &syn::Ident {
+        self.ident
+            .as_ref()
+            .expect("only named fields are currently supported")
+    }
+
+    fn to_decode_stmt(&self, buf_ident: &syn::Ident) -> TokenStream {
+        let DecoderField {
+            ident,
+            ty,
+            decoder: DecoderFieldOpts { skip, skip_if, map },
+        } = self;
+
+        if skip.is_present() {
+            return quote::quote! ( let #ident = Default::default() );
+        }
+
+        let map = if let Some(ref map) = map {
+            quote::quote!(.map(#map))
+        } else {
+            TokenStream::new()
+        };
+
+        if let Some(ref skip_if) = skip_if {
+            quote::quote! {
+                let #ident = #skip_if {
+                    Default::default()
+                } else {
+                    <#ty as recode::Decoder>::decode(#buf_ident) #map ?
+                }
+            }
+        } else {
+            quote::quote! {
+                let #ident = <#ty as recode::Decoder>::decode(#buf_ident) #map ?
+            }
+        }
     }
 }
