@@ -10,4 +10,4 @@ pub use error::{Error, Result};
 pub use bytes;
 
 #[cfg(feature = "derive")]
-pub use recode_derive::{Decoder, Encoder};
+pub use recode_derive::{Decoder, Encoder, Recode};

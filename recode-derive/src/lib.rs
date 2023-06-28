@@ -1,5 +1,6 @@
 mod decoder;
 mod encoder;
+mod recode;
 mod util;
 
 use darling::{FromDeriveInput, ToTokens};
@@ -22,4 +23,9 @@ pub fn derive_decoder(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(Encoder, attributes(recode))]
 pub fn derive_encoder(input: TokenStream) -> TokenStream {
     emit_impl_or_error!(encoder::Encoder[input]).into()
+}
+
+#[proc_macro_derive(Recode, attributes(recode))]
+pub fn derive_recode(input: TokenStream) -> TokenStream {
+    emit_impl_or_error!(recode::Recode[input]).into()
 }
