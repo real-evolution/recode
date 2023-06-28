@@ -2,7 +2,7 @@
 name = "recode"
 version = "0.1.0"
 description = "Reusable encoding/decoding constructs for Rust"
-keywords = ["encode", "decode", "serialize", "deserliaze", "i/o"]
+keywords = ["encode", "decode", "serialize", "deserliaze", "io"]
 edition.workspace = true
 authors.workspace = true
 readme.workspace = true
