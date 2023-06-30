@@ -11,3 +11,4 @@ pub(crate) fn default_error_type() -> Option<syn::Type> {
             .unwrap(),
     )
 }
+

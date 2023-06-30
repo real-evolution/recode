@@ -68,6 +68,7 @@ impl Recode {
             .clone()
             .map_struct_fields(|f| encoder::EncoderField {
                 ident: f.ident,
+                ty: f.ty,
                 encoder: f.encoder,
             })
     }
