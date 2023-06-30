@@ -1,9 +1,11 @@
 use darling::util::Flag;
 use proc_macro2::TokenStream;
 
+use crate::util::*;
+
 #[derive(Debug, darling::FromDeriveInput)]
 #[darling(forward_attrs(allow, doc, cfg))]
-#[darling(attributes(recode), supports(struct_named))]
+#[darling(attributes(recode), supports(struct_named, struct_unit))]
 pub(crate) struct Decoder {
     pub(crate) ident: syn::Ident,
     pub(crate) generics: syn::Generics,
@@ -15,11 +17,8 @@ pub(crate) struct Decoder {
 #[derive(Clone, Debug, Default, darling::FromMeta)]
 #[darling(default)]
 pub(crate) struct DecoderOpts {
-    #[darling(default = "Flag::present")]
-    enable: Flag,
-    #[darling(default = r#"crate::util::default_error_type"#)]
+    disable: Flag,
     error: Option<syn::Type>,
-    #[darling(default = r#"crate::util::default_buffer_name"#)]
     buffer_name: Option<syn::Ident>,
 }
 
@@ -47,22 +46,21 @@ impl darling::ToTokens for Decoder {
             ident,
             generics,
             data,
-            decoder,
+            decoder:
+                DecoderOpts {
+                    disable,
+                    error,
+                    buffer_name,
+                },
         } = self;
 
-        let DecoderOpts {
-            enable,
-            error,
-            buffer_name,
-        } = decoder;
-
-        if !enable.is_present() {
+        if disable.is_present() {
             return;
         }
 
         let (imp, ty, wher) = generics.split_for_impl();
-        let error = error.as_ref().unwrap();
-        let buffer_name = buffer_name.as_ref().unwrap();
+        let error = error.clone().unwrap_or(box_type());
+        let buffer_name = buffer_name.clone().unwrap_or(default_buffer_name());
 
         let fields: Vec<_> = data
             .as_ref()
@@ -71,7 +69,8 @@ impl darling::ToTokens for Decoder {
             .fields;
 
         let field_names = fields.iter().map(|f| f.ident());
-        let field_exprs = fields.iter().map(|&f| f.to_decode_stmt(buffer_name));
+        let field_exprs =
+            fields.iter().map(|&f| f.to_decode_stmt(&buffer_name));
 
         tokens.extend(quote::quote! {
             impl #imp recode::Decoder for #ident #ty #wher {

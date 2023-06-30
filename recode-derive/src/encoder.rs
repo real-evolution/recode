@@ -1,8 +1,10 @@
 use darling::util::Flag;
 
+use crate::util::*;
+
 #[derive(Debug, darling::FromDeriveInput)]
 #[darling(forward_attrs(allow, doc, cfg))]
-#[darling(attributes(recode), supports(struct_named))]
+#[darling(attributes(recode), supports(struct_named, struct_unit))]
 pub(crate) struct Encoder {
     pub(crate) ident: syn::Ident,
     pub(crate) generics: syn::Generics,
@@ -14,15 +16,10 @@ pub(crate) struct Encoder {
 #[derive(Clone, Debug, Default, darling::FromMeta)]
 #[darling(default)]
 pub(crate) struct EncoderOpts {
-    #[darling(default = "Flag::present")]
-    enable: Flag,
-    #[darling(default = "crate::util::default_error_type")]
+    disable: Flag,
     error: Option<syn::Type>,
-    #[darling(default = "crate::util::default_buffer_name")]
     buffer_name: Option<syn::Ident>,
-    #[darling(default = "default_input_type")]
     input_type: Option<syn::Type>,
-    #[darling(default = "default_input_name")]
     input_name: Option<syn::Ident>,
 }
 
@@ -52,7 +49,7 @@ impl darling::ToTokens for Encoder {
             data,
             encoder:
                 EncoderOpts {
-                    enable,
+                    disable,
                     error,
                     buffer_name,
                     input_type,
@@ -60,13 +57,15 @@ impl darling::ToTokens for Encoder {
                 },
         } = self;
 
-        if !enable.is_present() {
+        if disable.is_present() {
             return;
         }
 
         let (imp, ty, wher) = generics.split_for_impl();
-        let error = error.as_ref().unwrap();
-        let buffer_name = buffer_name.as_ref().unwrap();
+        let error = error.clone().unwrap_or(box_type());
+        let buffer_name = buffer_name.clone().unwrap_or(default_buffer_name());
+        let input_type = input_type.clone().unwrap_or(default_input_type());
+        let input_name = input_name.clone().unwrap_or(default_input_name());
 
         let fields: Vec<_> = data
             .as_ref()
@@ -74,9 +73,9 @@ impl darling::ToTokens for Encoder {
             .expect("only structs are supported")
             .fields;
 
-        let field_stmts = fields.iter().map(|&f| {
-            f.to_encode_stmt(input_name.as_ref().unwrap(), buffer_name)
-        });
+        let field_stmts = fields
+            .iter()
+            .map(|&f| f.to_encode_stmt(&input_name, &buffer_name));
 
         tokens.extend(quote::quote! {
             impl #imp recode::Encoder for #ident #ty #wher {
@@ -135,16 +134,14 @@ impl EncoderField {
         skip_if
             .as_ref()
             .map(|s| quote::quote! (if !(#s) { #stmt }))
-            .unwrap_or( stmt)
+            .unwrap_or(stmt)
     }
 }
 
-fn default_input_type() -> Option<syn::Type> {
-    use syn::parse::{Parse, Parser};
-
-    Some(syn::Type::parse.parse2(quote::quote!(Self)).unwrap())
+fn default_input_type() -> syn::Type {
+    str_to_type("Self")
 }
 
-fn default_input_name() -> Option<syn::Ident> {
-    Some(quote::format_ident!("input"))
+fn default_input_name() -> syn::Ident {
+    quote::format_ident!("input")
 }

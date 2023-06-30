@@ -4,7 +4,7 @@ use crate::{decoder, encoder};
 
 #[derive(Debug, darling::FromDeriveInput)]
 #[darling(forward_attrs(allow, doc, cfg))]
-#[darling(attributes(recode), supports(struct_named))]
+#[darling(attributes(recode), supports(struct_named, struct_unit))]
 pub(crate) struct Recode {
     ident: syn::Ident,
     generics: syn::Generics,
