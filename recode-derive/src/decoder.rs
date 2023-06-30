@@ -37,6 +37,7 @@ pub(crate) struct DecoderFieldOpts {
     skip: Flag,
     skip_if: Option<syn::Expr>,
     map: Option<syn::Expr>,
+    with: Option<syn::Type>,
     validate: Option<syn::Expr>,
 }
 
@@ -111,6 +112,7 @@ impl DecoderField {
                     skip,
                     skip_if,
                     map,
+                    with,
                     validate,
                 },
         } = self;
@@ -119,6 +121,7 @@ impl DecoderField {
             return quote::quote! ( let #ident = Default::default(); );
         }
 
+        let ty = with.as_ref().unwrap_or(ty);
         let map = map
             .as_ref()
             .map(|m| quote!(.map(#m)))
