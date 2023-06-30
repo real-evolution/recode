@@ -38,6 +38,7 @@ pub(crate) struct DecoderFieldOpts {
     skip: Flag,
     skip_if: Option<syn::Expr>,
     map: Option<syn::Expr>,
+    validate: Option<syn::Expr>,
 }
 
 impl darling::ToTokens for Decoder {
@@ -82,7 +83,7 @@ impl darling::ToTokens for Decoder {
                 {
                     use recode::Decoder;
 
-                    #( #field_exprs; )*
+                    #( #field_exprs )*
 
                     Ok(Self {
                         #(#field_names), *
@@ -101,21 +102,32 @@ impl DecoderField {
     }
 
     fn to_decode_stmt(&self, buf_ident: &syn::Ident) -> TokenStream {
+        use quote::quote;
+
         let DecoderField {
             ident,
             ty,
-            decoder: DecoderFieldOpts { skip, skip_if, map },
+            decoder:
+                DecoderFieldOpts {
+                    skip,
+                    skip_if,
+                    map,
+                    validate,
+                },
         } = self;
 
         if skip.is_present() {
-            return quote::quote! ( let #ident = Default::default() );
+            return quote::quote! ( let #ident = Default::default(); );
         }
 
-        let map = if let Some(ref map) = map {
-            quote::quote!(.map(#map))
-        } else {
-            TokenStream::new()
-        };
+        let map = map
+            .as_ref()
+            .map(|m| quote!(.map(#m)))
+            .unwrap_or(TokenStream::new());
+        let validate = validate
+            .as_ref()
+            .map(|v| quote!((#v)(&#ident, #buf_ident)?;))
+            .unwrap_or(TokenStream::new());
 
         if let Some(ref skip_if) = skip_if {
             quote::quote! {
@@ -123,11 +135,15 @@ impl DecoderField {
                     Default::default()
                 } else {
                     <#ty as recode::Decoder>::decode(#buf_ident) #map ?
-                }
+                };
+
+                #validate
             }
         } else {
             quote::quote! {
-                let #ident = <#ty as recode::Decoder>::decode(#buf_ident) #map ?
+                let #ident = <#ty as recode::Decoder>::decode(#buf_ident) #map ?;
+
+                #validate
             }
         }
     }
