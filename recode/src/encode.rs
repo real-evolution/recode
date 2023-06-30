@@ -2,6 +2,9 @@ use bytes::BufMut;
 
 /// A trait to be implemented by types that encode [`Encoder::Input`] values.
 pub trait Encoder {
+    /// The type of input that this encoder can encode.
+    type Input;
+
     /// The type of error that can occur if encoding fails.
     type Error;
 
@@ -11,8 +14,12 @@ pub trait Encoder {
     /// [`Encoder::encode`] never do.
     ///
     /// # Arguments
+    /// * `input` - The input to encode.
     /// * `buf` - The output buffer to write the encoded input to.
-    fn encode<B: BufMut>(&self, buf: &mut B) -> Result<(), Self::Error>;
+    fn encode<B: BufMut>(
+        input: &Self::Input,
+        buf: &mut B,
+    ) -> Result<(), Self::Error>;
 }
 
 #[cfg(test)]
@@ -47,7 +54,7 @@ mod tests {
         };
 
         let mut buf = bytes::BytesMut::new();
-        test_item.encode(&mut buf).unwrap();
+        TestType::encode(&test_item, &mut buf).unwrap();
 
         const BUF: [u8; 68] = [
             // age (4 bytes)

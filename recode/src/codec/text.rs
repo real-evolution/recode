@@ -26,14 +26,18 @@ macro_rules! define_encoding {
 
         impl<L> Encoder for $name<L>
         where
-            Buffer<L>: Encoder,
+            Buffer<L>: Encoder<Input = Buffer<L>>,
             Error: From<<Buffer<L> as Encoder>::Error>,
         {
+            type Input = Self;
             type Error = Error;
 
             #[inline(always)]
-            fn encode<B: bytes::BufMut>(&self, buf: &mut B) -> Result<(), Self::Error> {
-                Ok(self.0.encode(buf)?)
+            fn encode<B: bytes::BufMut>(
+                input: &Self::Input,
+                buf: &mut B
+            ) -> Result<(), Self::Error> {
+                Ok(Buffer::<L>::encode(&input.0, buf)?)
             }
         }
 

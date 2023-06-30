@@ -4,12 +4,13 @@ macro_rules! impl_ux {
     ($t:ty; size: $s:literal; rep: $r:ty ) => {
         impl crate::Encoder for $t {
             type Error = std::convert::Infallible;
+            type Input = $t;
 
             fn encode<B: bytes::BufMut>(
-                &self,
+                input: &Self::Input,
                 buf: &mut B,
             ) -> Result<(), Self::Error> {
-                let bytes = &<$r>::from(*self).to_be_bytes()[..$s];
+                let bytes = &<$r>::from(*input).to_be_bytes()[..$s];
 
                 buf.put_slice(bytes);
 
@@ -18,8 +19,8 @@ macro_rules! impl_ux {
         }
 
         impl crate::Decoder for $t {
-            type Output = Self;
             type Error = crate::Error;
+            type Output = Self;
 
             fn decode<B: bytes::Buf>(
                 buf: &mut B,

@@ -34,7 +34,8 @@ impl<L> Buffer<L> {
 
     /// Creates a new [`Buffer<L>`] object from a [`&'static [u8]`].
     ///
-    /// This is a shorthand for [`Buffer::new`]`(`[`bytes::Bytes::from_static`]`(`[`&'static [u8]`]`))`.
+    /// This is a shorthand for
+    /// [`Buffer::new`]`(`[`bytes::Bytes::from_static`]`(`[`&'static [u8]`]`))`.
     ///
     /// # Parameters
     /// - `bytes`: The [`&'static [u8]`] instance to wrap.
@@ -47,8 +48,8 @@ impl<L> Buffer<L> {
 }
 
 impl Decoder for Buffer {
-    type Output = Self;
     type Error = Error;
+    type Output = Self;
 
     fn decode<B: bytes::Buf>(buf: &mut B) -> Result<Self::Output, Self::Error> {
         let buf = buf.copy_to_bytes(buf.remaining());
@@ -59,9 +60,13 @@ impl Decoder for Buffer {
 
 impl Encoder for Buffer {
     type Error = Error;
+    type Input = Self;
 
-    fn encode<B: bytes::BufMut>(&self, buf: &mut B) -> Result<(), Self::Error> {
-        buf.put(self.inner.as_ref());
+    fn encode<B: bytes::BufMut>(
+        input: &Self::Input,
+        buf: &mut B,
+    ) -> Result<(), Self::Error> {
+        buf.put(input.inner.as_ref());
 
         Ok(())
     }
@@ -74,8 +79,8 @@ where
         + From<<usize as TryFrom<L::Output>>::Error>,
     usize: TryFrom<L::Output>,
 {
-    type Output = Self;
     type Error = Error;
+    type Output = Self;
 
     fn decode<B: bytes::Buf>(buf: &mut B) -> Result<Self::Output, Self::Error> {
         let len: usize = L::decode(buf)?.try_into()?;
@@ -94,16 +99,20 @@ where
 
 impl<L> Encoder for Buffer<L>
 where
-    L: Encoder + TryFrom<usize>,
+    L: Encoder<Input = L> + TryFrom<usize>,
     Error: From<<L as Encoder>::Error> + From<<L as TryFrom<usize>>::Error>,
 {
     type Error = Error;
+    type Input = Self;
 
-    fn encode<B: bytes::BufMut>(&self, buf: &mut B) -> Result<(), Self::Error> {
-        let len = L::try_from(self.inner.len())?;
+    fn encode<B: bytes::BufMut>(
+        input: &Self::Input,
+        buf: &mut B,
+    ) -> Result<(), Self::Error> {
+        let len = L::try_from(input.inner.len())?;
 
-        len.encode(buf)?;
-        buf.put(self.inner.as_ref());
+        L::encode(&len, buf)?;
+        buf.put(input.inner.as_ref());
 
         Ok(())
     }
