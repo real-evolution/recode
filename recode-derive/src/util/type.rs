@@ -1,6 +1,6 @@
 use syn::parse::{Parse, Parser};
 
-pub(crate) fn str_to_type(ty: &str) -> syn::Type {
+fn str_to_type(ty: &str) -> syn::Type {
     syn::Type::parse
         .parse_str(ty)
         .unwrap_or_else(|_| panic!("invalid type: {}", ty))
