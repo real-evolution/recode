@@ -73,13 +73,13 @@ impl darling::ToTokens for Decoder {
             .unwrap_or(syn::Type::Verbatim(quote!(Self)));
         let error = error.clone().unwrap_or(box_type());
         let buffer_name = buffer_name.clone().unwrap_or(default_buffer_name());
-        let buffer_type = buffer_type.clone().unwrap_or(
+        let buffer_type = buffer_type.clone().unwrap_or_else(|| {
             generics.push_impl_param(
                 syn::TypeParam::parse
                     .parse2(quote!(B: recode::bytes::Buf))
                     .unwrap(),
-            ),
-        );
+            )
+        });
 
         let fields: Vec<_> = data
             .as_ref()
