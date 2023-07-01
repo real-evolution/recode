@@ -102,7 +102,7 @@ impl darling::ToTokens for Encoder {
 
                 fn encode(
                     #input_name: &#input_type,
-                    #buffer_name: &mut B,
+                    #buffer_name: &mut #buffer_type,
                 ) -> Result<(), Self::Error> {
                     use recode::Encoder;
 

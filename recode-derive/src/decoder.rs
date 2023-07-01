@@ -97,7 +97,10 @@ impl darling::ToTokens for Decoder {
             impl #imp recode::Decoder<#buffer_type, #output_type> for #ident #ty #wher {
                 type Error = #error;
 
-                fn decode(#buffer_name: &mut B) -> Result<#output_type, Self::Error> {
+                fn decode(
+                    #buffer_name: &mut #buffer_type
+                ) -> Result<#output_type, Self::Error>
+                {
                     use recode::Decoder;
 
                     #( #field_exprs )*
