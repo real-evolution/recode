@@ -16,8 +16,8 @@ pub enum Error {
         available: usize,
     },
 
-    #[error("integer conversion: {0}")]
-    IntConversion(#[from] std::num::TryFromIntError),
+    #[error("integer conversion")]
+    IntConversion(#[from] crate::codec::TryFromIntError),
 
     #[error("text: {0}")]
     Text(#[from] crate::codec::TextError),

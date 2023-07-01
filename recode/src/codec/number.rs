@@ -1,6 +1,28 @@
 use crate::bytes::{Buf, BufMut};
 use crate::{Decoder, Encoder};
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct TryFromIntError(pub(crate) ());
+
+impl From<std::num::TryFromIntError> for TryFromIntError {
+    fn from(_: std::num::TryFromIntError) -> TryFromIntError {
+        TryFromIntError(())
+    }
+}
+
+impl From<std::convert::Infallible> for TryFromIntError {
+    fn from(_: std::convert::Infallible) -> TryFromIntError {
+        TryFromIntError(())
+    }
+}
+
+impl std::fmt::Display for TryFromIntError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("integer overflow")
+    }
+}
+
+impl std::error::Error for TryFromIntError {}
 macro_rules! impl_int {
     ($t:ty) => {
         paste::paste! {
