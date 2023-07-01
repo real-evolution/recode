@@ -1,10 +1,6 @@
-use bytes::BufMut;
-
-/// A trait to be implemented by types that encode [`Encoder::Input`] values.
-pub trait Encoder {
-    /// The type of input that this encoder can encode.
-    type Input;
-
+/// A trait to be implemented by types that encode [`Item`] values into a
+/// buffer of type [`B`].
+pub trait Encoder<B, Item = Self> {
     /// The type of error that can occur if encoding fails.
     type Error;
 
@@ -14,12 +10,9 @@ pub trait Encoder {
     /// [`Encoder::encode`] never do.
     ///
     /// # Arguments
-    /// * `input` - The input to encode.
+    /// * `item` - The input to encode.
     /// * `buf` - The output buffer to write the encoded input to.
-    fn encode<B: BufMut>(
-        input: &Self::Input,
-        buf: &mut B,
-    ) -> Result<(), Self::Error>;
+    fn encode(item: &Item, buf: &mut B) -> Result<(), Self::Error>;
 }
 
 #[cfg(test)]
