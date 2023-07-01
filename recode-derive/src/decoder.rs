@@ -18,7 +18,7 @@ pub(crate) struct Decoder {
 #[darling(default)]
 pub(crate) struct DecoderOpts {
     disable: Flag,
-    output: Option<syn::Type>,
+    output_type: Option<syn::Type>,
     error: Option<syn::Type>,
     buffer_type: Option<syn::Type>,
     buffer_name: Option<syn::Ident>,
@@ -55,7 +55,7 @@ impl darling::ToTokens for Decoder {
             decoder:
                 DecoderOpts {
                     disable,
-                    output,
+                    output_type,
                     error,
                     buffer_type,
                     buffer_name,
@@ -68,8 +68,9 @@ impl darling::ToTokens for Decoder {
 
         let mut generics = OwnedGenerics::new(generics.clone());
 
-        let output =
-            output.clone().unwrap_or(syn::Type::Verbatim(quote!(Self)));
+        let output_type = output_type
+            .clone()
+            .unwrap_or(syn::Type::Verbatim(quote!(Self)));
         let error = error.clone().unwrap_or(box_type());
         let buffer_name = buffer_name.clone().unwrap_or(default_buffer_name());
         let buffer_type = buffer_type.clone().unwrap_or(
@@ -93,15 +94,15 @@ impl darling::ToTokens for Decoder {
         let (imp, ty, wher) = generics.split_for_impl();
 
         tokens.extend(quote::quote! {
-            impl #imp recode::Decoder<#buffer_type, #output> for #ident #ty #wher {
+            impl #imp recode::Decoder<#buffer_type, #output_type> for #ident #ty #wher {
                 type Error = #error;
 
-                fn decode(#buffer_name: &mut B) -> Result<#output, Self::Error> {
+                fn decode(#buffer_name: &mut B) -> Result<#output_type, Self::Error> {
                     use recode::Decoder;
 
                     #( #field_exprs )*
 
-                    Ok(#output {
+                    Ok(#output_type {
                         #(#field_names), *
                     })
                 }
