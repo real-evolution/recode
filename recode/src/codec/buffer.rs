@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::{Decoder, Encoder, Error};
+use crate::{bytes::Buf, Decoder, Encoder, Error};
 
 /// A type alias for a [`Buffer`] without a length prefix.
 pub type UnprefixedBuffer = Buffer<()>;
@@ -12,7 +12,7 @@ pub type UnprefixedBuffer = Buffer<()>;
 /// [`Decoder<Output = L`] and [`TryFrom<usize>`]` which represents the length
 /// prefix of the buffer.
 #[derive(Debug, Clone)]
-pub struct Buffer<L = ()> {
+pub struct Buffer<L = crate::util::Remaining> {
     inner: bytes::Bytes,
     _marker: std::marker::PhantomData<L>,
 }
@@ -47,43 +47,16 @@ impl<L> Buffer<L> {
     }
 }
 
-impl Decoder for Buffer {
-    type Error = Error;
-    type Output = Self;
-
-    fn decode<B: bytes::Buf>(buf: &mut B) -> Result<Self::Output, Self::Error> {
-        let buf = buf.copy_to_bytes(buf.remaining());
-
-        Ok(Self::new(buf))
-    }
-}
-
-impl Encoder for Buffer {
-    type Error = Error;
-    type Input = Self;
-
-    fn encode<B: bytes::BufMut>(
-        input: &Self::Input,
-        buf: &mut B,
-    ) -> Result<(), Self::Error> {
-        buf.put(input.inner.as_ref());
-
-        Ok(())
-    }
-}
-
-impl<L> Decoder for Buffer<L>
+impl<B, L> Decoder<B> for Buffer<L>
 where
-    L: Decoder,
-    Error: From<<L as Decoder>::Error>
-        + From<<usize as TryFrom<L::Output>>::Error>,
-    usize: TryFrom<L::Output>,
+    B: Buf,
+    L: Decoder<B, usize>,
+    Error: From<<L as Decoder<B, usize>>::Error>,
 {
     type Error = Error;
-    type Output = Self;
 
-    fn decode<B: bytes::Buf>(buf: &mut B) -> Result<Self::Output, Self::Error> {
-        let len: usize = L::decode(buf)?.try_into()?;
+    fn decode(buf: &mut B) -> Result<Self, Self::Error> {
+        let len = L::decode(buf)?;
 
         if buf.remaining() < len {
             return Err(Error::BytesNeeded {

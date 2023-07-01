@@ -1,7 +1,9 @@
+use crate::{bytes::Buf, Decoder, Encoder};
+
 macro_rules! impl_int {
     ($t:ty) => {
         paste::paste! {
-            impl crate::Encoder for $t {
+            impl Encoder for $t {
                 type Input = Self;
                 type Error = std::convert::Infallible;
 
@@ -15,13 +17,10 @@ macro_rules! impl_int {
                 }
             }
 
-            impl crate::Decoder for $t {
-                type Output = Self;
+            impl<B: Buf> crate::Decoder<B> for $t {
                 type Error = crate::Error;
 
-                fn decode<B: bytes::Buf>(
-                    buf: &mut B,
-                ) -> Result<Self::Output, Self::Error> {
+                fn decode(buf: &mut B) -> Result<Self, Self::Error> {
                     const FULL_EN: usize = std::mem::size_of::<$t>();
 
                     if buf.remaining() < FULL_EN {
@@ -33,6 +32,16 @@ macro_rules! impl_int {
                     }
 
                     Ok(buf.[<get_ $t>]())
+                }
+            }
+
+            impl<B: Buf> Decoder<B, usize> for $t {
+                type Error = crate::Error;
+
+                fn decode(buf: &mut B) -> Result<usize, Self::Error> {
+                    let value = <Self as Decoder<B>>::decode(buf)?;
+
+                    Ok(usize::try_from(value)?)
                 }
             }
         }
@@ -53,6 +62,3 @@ impl_int!(u64);
 
 impl_int!(i128);
 impl_int!(u128);
-
-impl_int!(f32);
-impl_int!(f64);

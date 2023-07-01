@@ -18,13 +18,13 @@ macro_rules! impl_ux {
             }
         }
 
-        impl crate::Decoder for $t {
+        impl<B> crate::Decoder<B> for $t
+        where
+            B: crate::bytes::Buf,
+        {
             type Error = crate::Error;
-            type Output = Self;
 
-            fn decode<B: bytes::Buf>(
-                buf: &mut B,
-            ) -> Result<Self::Output, Self::Error> {
+            fn decode(buf: &mut B) -> Result<Self, Self::Error> {
                 const REPR_LEN: usize = std::mem::size_of::<$r>();
 
                 if buf.remaining() < $s {

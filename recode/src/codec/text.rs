@@ -7,15 +7,14 @@ macro_rules! define_encoding {
         #[doc = $d]
         pub struct $name<L = ()>(Buffer<L>);
 
-        impl<L> Decoder for $name<L>
+        impl<B, L> Decoder<B> for $name<L>
         where
-            Buffer<L>: Decoder<Output = Buffer<L>>,
-            Error: From<<Buffer<L> as Decoder>::Error>,
+            Buffer<L>: Decoder<B>,
+            Error: From<<Buffer<L> as Decoder<B>>::Error>,
         {
-            type Output = Self;
             type Error = Error;
 
-            fn decode<B: bytes::Buf>(buf: &mut B) -> Result<Self::Output, Self::Error> {
+            fn decode(buf: &mut B) -> Result<Self, Self::Error> {
                 let $i = Buffer::<L>::decode(buf)?;
 
                 $v
