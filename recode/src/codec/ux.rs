@@ -1,27 +1,10 @@
+use crate::bytes::{Buf, BufMut};
+
 pub use ux::{i24, i40, i48, i56, u24, u40, u48, u56};
 
 macro_rules! impl_ux {
     ($t:ty; size: $s:literal; rep: $r:ty ) => {
-        impl crate::Encoder for $t {
-            type Error = std::convert::Infallible;
-            type Input = $t;
-
-            fn encode<B: bytes::BufMut>(
-                input: &Self::Input,
-                buf: &mut B,
-            ) -> Result<(), Self::Error> {
-                let bytes = &<$r>::from(*input).to_be_bytes()[..$s];
-
-                buf.put_slice(bytes);
-
-                Ok(())
-            }
-        }
-
-        impl<B> crate::Decoder<B> for $t
-        where
-            B: crate::bytes::Buf,
-        {
+        impl<B: Buf> crate::Decoder<B> for $t {
             type Error = crate::Error;
 
             fn decode(buf: &mut B) -> Result<Self, Self::Error> {
@@ -39,6 +22,18 @@ macro_rules! impl_ux {
                 buf.copy_to_slice(&mut be_repr[(REPR_LEN - $s)..REPR_LEN]);
 
                 Ok(<$t>::new(<$r>::from_be_bytes(be_repr)))
+            }
+        }
+
+        impl<B: BufMut> crate::Encoder<B> for $t {
+            type Error = std::convert::Infallible;
+
+            fn encode(item: &$t, buf: &mut B) -> Result<(), Self::Error> {
+                let bytes = &<$r>::from(*item).to_be_bytes()[..$s];
+
+                buf.put_slice(bytes);
+
+                Ok(())
             }
         }
     };

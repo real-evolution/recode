@@ -1,18 +1,14 @@
 use crate::Encoder;
 
-impl<E> Encoder for Option<E>
+impl<B, E> Encoder<B> for Option<E>
 where
-    E: Encoder<Input = E>,
+    E: Encoder<B>,
 {
     type Error = E::Error;
-    type Input = Option<E>;
 
-    fn encode<B: bytes::BufMut>(
-        input: &Option<E>,
-        buf: &mut B,
-    ) -> Result<(), Self::Error> {
-        match input {
-            | Some(ref e) => E::encode(e, buf),
+    fn encode(item: &Option<E>, buf: &mut B) -> Result<(), Self::Error> {
+        match item {
+            | Some(e) => E::encode(e, buf),
             | None => Ok(()),
         }
     }

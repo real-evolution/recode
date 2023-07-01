@@ -1,23 +1,10 @@
-use crate::{bytes::Buf, Decoder, Encoder};
+use crate::bytes::{Buf, BufMut};
+use crate::{Decoder, Encoder};
 
 macro_rules! impl_int {
     ($t:ty) => {
         paste::paste! {
-            impl Encoder for $t {
-                type Input = Self;
-                type Error = std::convert::Infallible;
-
-                fn encode<B: bytes::BufMut>(
-                    input: &Self::Input,
-                    buf: &mut B,
-                ) -> Result<(), Self::Error> {
-                    buf.[<put_ $t>](*input);
-
-                    Ok(())
-                }
-            }
-
-            impl<B: Buf> crate::Decoder<B> for $t {
+            impl<B: Buf> Decoder<B> for $t {
                 type Error = crate::Error;
 
                 fn decode(buf: &mut B) -> Result<Self, Self::Error> {
@@ -35,15 +22,16 @@ macro_rules! impl_int {
                 }
             }
 
-            impl<B: Buf> Decoder<B, usize> for $t {
-                type Error = crate::Error;
+            impl<B: BufMut> Encoder<B> for $t {
+                type Error = std::convert::Infallible;
 
-                fn decode(buf: &mut B) -> Result<usize, Self::Error> {
-                    let value = <Self as Decoder<B>>::decode(buf)?;
+                fn encode(item: &$t, buf: &mut B) -> Result<(), Self::Error> {
+                    buf.[<put_ $t>](*item);
 
-                    Ok(usize::try_from(value)?)
+                    Ok(())
                 }
             }
+
         }
     };
 }

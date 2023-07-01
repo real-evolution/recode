@@ -1,6 +1,7 @@
 use std::ops::Deref;
 
-use crate::{bytes::Buf, Decoder, Encoder, Error};
+use crate::bytes::{Buf, BufMut};
+use crate::{Decoder, Encoder, Error};
 
 /// A type alias for a [`Buffer`] without a length prefix.
 pub type UnprefixedBuffer = Buffer<()>;
@@ -70,22 +71,19 @@ where
     }
 }
 
-impl<L> Encoder for Buffer<L>
+impl<B, L> Encoder<B> for Buffer<L>
 where
-    L: Encoder<Input = L> + TryFrom<usize>,
-    Error: From<<L as Encoder>::Error> + From<<L as TryFrom<usize>>::Error>,
+    B: BufMut,
+    L: Encoder<B, usize>,
+    Error: From<<L as Encoder<B, usize>>::Error>,
 {
     type Error = Error;
-    type Input = Self;
 
-    fn encode<B: bytes::BufMut>(
-        input: &Self::Input,
-        buf: &mut B,
-    ) -> Result<(), Self::Error> {
-        let len = L::try_from(input.inner.len())?;
+    fn encode(item: &Self, buf: &mut B) -> Result<(), Self::Error> {
+        let len = item.inner.len();
 
         L::encode(&len, buf)?;
-        buf.put(input.inner.as_ref());
+        buf.put(item.inner.as_ref());
 
         Ok(())
     }
