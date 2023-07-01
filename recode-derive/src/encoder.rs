@@ -18,6 +18,7 @@ pub(crate) struct Encoder {
 pub(crate) struct EncoderOpts {
     disable: Flag,
     error: Option<syn::Type>,
+    buffer_type: Option<syn::Type>,
     buffer_name: Option<syn::Ident>,
     input_type: Option<syn::Type>,
     input_name: Option<syn::Ident>,
@@ -43,6 +44,9 @@ pub(crate) struct EncoderFieldOpts {
 
 impl darling::ToTokens for Encoder {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        use quote::quote;
+        use syn::parse::{Parse, Parser};
+
         let Encoder {
             ident,
             generics,
@@ -51,6 +55,7 @@ impl darling::ToTokens for Encoder {
                 EncoderOpts {
                     disable,
                     error,
+                    buffer_type,
                     buffer_name,
                     input_type,
                     input_name,
@@ -61,11 +66,23 @@ impl darling::ToTokens for Encoder {
             return;
         }
 
-        let (imp, ty, wher) = generics.split_for_impl();
+        let mut generics = OwnedGenerics::new(generics.clone());
+
+        let input_type = input_type
+            .clone()
+            .unwrap_or(syn::Type::Verbatim(quote!(Self)));
+        let input_name =
+            input_name.clone().unwrap_or(quote::format_ident!("input"));
+
         let error = error.clone().unwrap_or(box_type());
         let buffer_name = buffer_name.clone().unwrap_or(default_buffer_name());
-        let input_type = input_type.clone().unwrap_or(default_input_type());
-        let input_name = input_name.clone().unwrap_or(default_input_name());
+        let buffer_type = buffer_type.clone().unwrap_or(
+            generics.push_impl_param(
+                syn::TypeParam::parse
+                    .parse2(quote!(B: recode::bytes::BufMut))
+                    .unwrap(),
+            ),
+        );
 
         let fields: Vec<_> = data
             .as_ref()
@@ -77,13 +94,14 @@ impl darling::ToTokens for Encoder {
             .iter()
             .map(|&f| f.to_encode_stmt(&input_name, &buffer_name));
 
+        let (imp, ty, wher) = generics.split_for_impl();
+
         tokens.extend(quote::quote! {
-            impl #imp recode::Encoder for #ident #ty #wher {
-                type Input = #input_type;
+            impl #imp recode::Encoder<#buffer_type, #input_type> for #ident #ty #wher {
                 type Error = #error;
 
-                fn encode<B: recode::bytes::BufMut>(
-                    #input_name: &Self::Input,
+                fn encode(
+                    #input_name: &#input_type,
                     #buffer_name: &mut B,
                 ) -> Result<(), Self::Error> {
                     use recode::Encoder;
@@ -128,7 +146,7 @@ impl EncoderField {
             .map(|m| quote! (((#m)(#input_ident.#ident))))
             .unwrap_or(quote! (#input_ident.#ident));
         let stmt = quote! {
-            <#with as recode::Encoder>::encode(&#input, #buf_ident)?;
+            <#with as recode::Encoder<_, #ty>>::encode(&#input, #buf_ident)?;
         };
 
         skip_if
@@ -136,12 +154,4 @@ impl EncoderField {
             .map(|s| quote::quote! (if !(#s) { #stmt }))
             .unwrap_or(stmt)
     }
-}
-
-fn default_input_type() -> syn::Type {
-    str_to_type("Self")
-}
-
-fn default_input_name() -> syn::Ident {
-    quote::format_ident!("input")
 }
