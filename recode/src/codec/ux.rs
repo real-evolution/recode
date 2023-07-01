@@ -1,10 +1,11 @@
 use crate::bytes::{Buf, BufMut};
+use crate::{Decoder, Encoder};
 
 pub use ux::{i24, i40, i48, i56, u24, u40, u48, u56};
 
 macro_rules! impl_ux {
     ($t:ty; size: $s:literal; rep: $r:ty ) => {
-        impl<B: Buf> crate::Decoder<B> for $t {
+        impl<B: Buf> Decoder<B> for $t {
             type Error = crate::Error;
 
             fn decode(buf: &mut B) -> Result<Self, Self::Error> {
@@ -25,7 +26,7 @@ macro_rules! impl_ux {
             }
         }
 
-        impl<B: BufMut> crate::Encoder<B> for $t {
+        impl<B: BufMut> Encoder<B> for $t {
             type Error = std::convert::Infallible;
 
             fn encode(item: &$t, buf: &mut B) -> Result<(), Self::Error> {
@@ -34,6 +35,29 @@ macro_rules! impl_ux {
                 buf.put_slice(bytes);
 
                 Ok(())
+            }
+        }
+
+        impl<B: Buf> Decoder<B, usize> for $t {
+            type Error = crate::Error;
+
+            fn decode(buf: &mut B) -> Result<usize, Self::Error> {
+                let value = <Self as crate::Decoder<B>>::decode(buf)?;
+
+                usize::try_from(<$r>::from(value))
+                    .map_err(|_| super::number::TryFromIntError(()))
+                    .map_err(Into::into)
+            }
+        }
+
+        impl<B: BufMut> Encoder<B, usize> for $t {
+            type Error = crate::Error;
+
+            fn encode(item: &usize, buf: &mut B) -> Result<(), Self::Error> {
+                let value = <$r>::try_from(*item)
+                    .map_err(|_| super::number::TryFromIntError(()))?;
+
+                Self::encode(&<$t>::new(value), buf).map_err(Into::into)
             }
         }
     };

@@ -54,6 +54,28 @@ macro_rules! impl_int {
                 }
             }
 
+            impl<B: Buf> Decoder<B, usize> for $t {
+                type Error = crate::Error;
+
+                fn decode(buf: &mut B) -> Result<usize, Self::Error> {
+                    let value = <Self as crate::Decoder<B>>::decode(buf)?;
+
+                    usize::try_from(value)
+                        .map_err(TryFromIntError::from)
+                        .map_err(Into::into)
+                }
+            }
+
+            impl<B: BufMut> Encoder<B, usize> for $t {
+                type Error = crate::Error;
+
+                fn encode(item: &usize, buf: &mut B) -> Result<(), Self::Error> {
+                    let value = Self::try_from(*item)
+                        .map_err(TryFromIntError::from)?;
+
+                    Self::encode(&value, buf).map_err(Into::into)
+                }
+            }
         }
     };
 }
