@@ -1,11 +1,6 @@
-use bytes::Buf;
-
 /// A trait for types that can decode values of type [`Decoder::Output`] from
-/// a bytes buffer.
-pub trait Decoder {
-    /// The type of the value that will be decoded.
-    type Output;
-
+/// a bytes buffer of type [`B`].
+pub trait Decoder<B, Item = Self> {
     /// The type of error that can occur if decoding fails.
     type Error;
 
@@ -16,7 +11,7 @@ pub trait Decoder {
     ///
     /// # Returns
     /// The decoded value.
-    fn decode<B: Buf>(buf: &mut B) -> Result<Self::Output, Self::Error>;
+    fn decode(buf: &mut B) -> Result<Item, Self::Error>;
 }
 
 #[cfg(test)]
