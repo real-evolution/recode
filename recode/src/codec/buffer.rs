@@ -111,8 +111,8 @@ mod tests {
     #[cfg(all(test, feature = "ux"))]
     use crate::codec::ux::*;
 
+    use crate::codec::*;
     use crate::*;
-    use crate::{codec::Buffer, util::Remaining};
 
     #[test]
     fn unprefixed_decode_test() {
@@ -121,10 +121,16 @@ mod tests {
 
         assert_eq!(len, bytes.len());
 
-        let buffer = Buffer::<Remaining>::decode(&mut bytes.clone()).unwrap();
+        let buffer = UnprefixedBuffer::decode(&mut bytes.clone()).unwrap();
 
         assert_eq!(buffer.len(), len);
         assert_eq!(buffer.as_ref(), bytes.as_ref());
+
+        let mut encoded = BytesMut::new();
+        UnprefixedBuffer::encode(&buffer, &mut encoded).unwrap();
+
+        assert_eq!(encoded.len(), len);
+        assert_eq!(encoded.as_ref(), buffer.as_ref());
     }
 
     #[test]
