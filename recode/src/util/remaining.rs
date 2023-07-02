@@ -18,10 +18,10 @@ where
     }
 }
 
-impl<B> crate::Encoder<B> for Remaining {
+impl<B> crate::Encoder<B, usize> for Remaining {
     type Error = crate::Error;
 
-    fn encode(_input: &Self, _buf: &mut B) -> Result<(), Self::Error> {
+    fn encode(_input: &usize, _buf: &mut B) -> Result<(), Self::Error> {
         Ok(())
     }
 }
