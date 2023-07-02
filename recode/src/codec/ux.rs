@@ -1,4 +1,5 @@
 use crate::bytes::{Buf, BufMut};
+use crate::util::EncoderExt;
 use crate::{Decoder, Encoder};
 
 pub use ux::{i24, i40, i48, i56, u24, u40, u48, u56};
@@ -59,7 +60,7 @@ macro_rules! impl_ux {
                 let value = <$r>::try_from(*item)
                     .map_err(|_| super::number::TryFromIntError(()))?;
 
-                Self::encode(&<$t>::new(value), buf).map_err(Into::into)
+                <$t>::new(value).encode_to(buf).map_err(Into::into)
             }
         }
     };
@@ -83,7 +84,7 @@ mod tests {
     use fake::Fake;
 
     use super::*;
-    use crate::Encoder;
+    use crate::util::EncoderExt;
 
     macro_rules! test_ux {
         ($t:ty; size: $s:literal; rep: $r:ty ) => {
@@ -106,7 +107,7 @@ mod tests {
                     let value = <$t>::new(repr);
                     let mut bytes = BytesMut::new();
 
-                    <$t>::encode(&value, &mut bytes).unwrap();
+                    value.encode_to(&mut bytes).unwrap();
 
                     assert_eq!($s, bytes.len());
                     assert_eq!(&repr.to_be_bytes()[(REPR_LEN - $s)..], &bytes[..]);

@@ -112,6 +112,7 @@ mod tests {
     use crate::codec::ux::*;
 
     use crate::codec::*;
+    use crate::util::EncoderExt;
     use crate::*;
 
     #[test]
@@ -127,7 +128,7 @@ mod tests {
         assert_eq!(buffer.as_ref(), bytes.as_ref());
 
         let mut encoded = BytesMut::new();
-        UnprefixedBuffer::encode(&buffer, &mut encoded).unwrap();
+        buffer.encode_to(&mut encoded).unwrap();
 
         assert_eq!(encoded.len(), len);
         assert_eq!(encoded.as_ref(), buffer.as_ref());
@@ -145,7 +146,7 @@ mod tests {
         let buffer = super::Buffer::<u32>::new(pool.slice(0..use_len));
         let mut bytes = BytesMut::new();
 
-        Buffer::<u32>::encode(&buffer, &mut bytes).unwrap();
+        buffer.encode_to(&mut bytes).unwrap();
 
         assert_eq!(buffer.len(), use_len);
         assert_eq!(bytes.len(), 4 + use_len);
@@ -179,7 +180,7 @@ mod tests {
                     let buffer = super::Buffer::<$t>::new(pool.slice(0..use_len));
                     let mut bytes = BytesMut::new();
 
-                    Buffer::<$t>::encode(&buffer, &mut bytes).unwrap();
+                    buffer.encode_to(&mut bytes).unwrap();
 
                     let len_bytes = &(use_len as $r).to_be_bytes()[(REPR_LEN - $s)..];
 

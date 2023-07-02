@@ -1,4 +1,5 @@
 use crate::bytes::{Buf, BufMut};
+use crate::util::EncoderExt;
 use crate::{Decoder, Encoder};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -73,7 +74,7 @@ macro_rules! impl_int {
                     let value = Self::try_from(*item)
                         .map_err(TryFromIntError::from)?;
 
-                    Self::encode(&value, buf).map_err(Into::into)
+                    value.encode_to(buf).map_err(Into::into)
                 }
             }
         }
@@ -100,7 +101,7 @@ mod tests {
     use bytes::BytesMut;
     use fake::Fake;
 
-    use crate::Encoder;
+    use crate::util::EncoderExt;
 
     macro_rules! test_int {
         ($t:ty) => {
@@ -122,7 +123,7 @@ mod tests {
 
                     let mut bytes = BytesMut::new();
 
-                    <$t>::encode(&value, &mut bytes).unwrap();
+                    value.encode_to(&mut bytes).unwrap();
 
                     assert_eq!(LEN, bytes.len());
                     assert_eq!(&value.to_be_bytes()[..], &bytes[..]);

@@ -1,4 +1,5 @@
 use super::Buffer;
+use crate::util::EncoderExt;
 use crate::{Decoder, Encoder, Error};
 
 macro_rules! define_encoding {
@@ -32,25 +33,23 @@ macro_rules! define_encoding {
 
             #[inline(always)]
             fn encode(item: &Self, buf: &mut B) -> Result<(), Self::Error> {
-                Ok(Buffer::<L>::encode(&item.0, buf)?)
+                Ok(item.0.encode_to(buf)?)
             }
         }
 
         impl<L> std::ops::Deref for $name<L> {
             type Target = str;
 
+            #[inline(always)]
             fn deref(&self) -> &Self::Target {
-                let buf = self.0.deref();
-
-                unsafe { std::str::from_utf8_unchecked(buf.as_ref()) }
+                unsafe { std::str::from_utf8_unchecked(self.0.as_ref()) }
             }
         }
 
         impl<L> From<&'static str> for $name<L> {
+            #[inline(always)]
             fn from(value: &'static str) -> Self {
-                let buf = Buffer::from_static(value.as_bytes());
-
-                Self(buf)
+                Self(Buffer::from_static(value.as_bytes()))
             }
         }
     };
