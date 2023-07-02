@@ -30,7 +30,9 @@ macro_rules! impl_ux {
             type Error = std::convert::Infallible;
 
             fn encode(item: &$t, buf: &mut B) -> Result<(), Self::Error> {
-                let bytes = &<$r>::from(*item).to_be_bytes()[..$s];
+                const REPR_LEN: usize = std::mem::size_of::<$r>();
+
+                let bytes = &<$r>::from(*item).to_be_bytes()[(REPR_LEN - $s)..];
 
                 buf.put_slice(bytes);
 
@@ -74,3 +76,54 @@ impl_ux!(u48; size: 6; rep: u64);
 
 impl_ux!(i56; size: 7; rep: i64);
 impl_ux!(u56; size: 7; rep: u64);
+
+#[cfg(test)]
+mod tests {
+    use bytes::BytesMut;
+    use fake::Fake;
+
+    use super::*;
+    use crate::Encoder;
+
+    macro_rules! test_ux {
+        ($t:ty; size: $s:literal; rep: $r:ty ) => {
+            paste::paste! {
+                #[test]
+                fn [<test_ $t>]() {
+                    const REPR_LEN: usize = std::mem::size_of::<$r>();
+
+                    let rmax: $r = <$t>::MAX.into();
+                    let repr: $r = (0..rmax).fake();
+
+                    if stringify!($t).starts_with("u") {
+                        assert_eq!(rmax.trailing_ones(), $s * 8);
+                    } else {
+                        assert_eq!(rmax.trailing_ones(), $s * 8 - 1);
+                    }
+
+                    assert_eq!(repr & !rmax, 0);
+
+                    let value = <$t>::new(repr);
+                    let mut bytes = BytesMut::new();
+
+                    <$t>::encode(&value, &mut bytes).unwrap();
+
+                    assert_eq!($s, bytes.len());
+                    assert_eq!(&repr.to_be_bytes()[(REPR_LEN - $s)..], &bytes[..]);
+                }
+            }
+        };
+    }
+
+    test_ux!(i24; size: 3; rep: i32);
+    test_ux!(u24; size: 3; rep: u32);
+
+    test_ux!(i40; size: 5; rep: i64);
+    test_ux!(u40; size: 5; rep: u64);
+
+    test_ux!(i48; size: 6; rep: i64);
+    test_ux!(u48; size: 6; rep: u64);
+
+    test_ux!(i56; size: 7; rep: i64);
+    test_ux!(u56; size: 7; rep: u64);
+}
