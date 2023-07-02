@@ -94,3 +94,55 @@ impl_int!(u64);
 
 impl_int!(i128);
 impl_int!(u128);
+
+#[cfg(test)]
+mod tests {
+    use bytes::BytesMut;
+    use fake::Fake;
+
+    use crate::Encoder;
+
+    macro_rules! test_int {
+        ($t:ty) => {
+            paste::paste! {
+                #[test]
+                fn [<test_ $t>]() {
+                    const LEN: usize = std::mem::size_of::<$t>();
+                    const MAX: $t = <$t>::MAX;
+
+                    let value: $t = (0..MAX).fake();
+
+                    if stringify!($t).starts_with("u") {
+                        assert_eq!(MAX.trailing_ones() as usize, LEN * 8);
+                    } else {
+                        assert_eq!(MAX.trailing_ones() as usize, LEN * 8 - 1);
+                    }
+
+                    assert_eq!(value & !MAX, 0);
+
+                    let mut bytes = BytesMut::new();
+
+                    <$t>::encode(&value, &mut bytes).unwrap();
+
+                    assert_eq!(LEN, bytes.len());
+                    assert_eq!(&value.to_be_bytes()[..], &bytes[..]);
+                }
+            }
+        };
+    }
+
+    test_int!(i8);
+    test_int!(u8);
+
+    test_int!(i16);
+    test_int!(u16);
+
+    test_int!(i32);
+    test_int!(u32);
+
+    test_int!(i64);
+    test_int!(u64);
+
+    test_int!(i128);
+    test_int!(u128);
+}
