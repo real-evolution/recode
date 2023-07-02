@@ -4,7 +4,7 @@ use crate::bytes::{Buf, BufMut};
 use crate::{Decoder, Encoder, Error};
 
 /// A type alias for a [`Buffer`] without a length prefix.
-pub type UnprefixedBuffer = Buffer<()>;
+pub type UnprefixedBuffer = Buffer<crate::util::Remaining>;
 
 /// A wrapper type for consecutive bytes.
 ///
@@ -13,7 +13,7 @@ pub type UnprefixedBuffer = Buffer<()>;
 /// [`Decoder<Output = L`] and [`TryFrom<usize>`]` which represents the length
 /// prefix of the buffer.
 #[derive(Debug, Clone)]
-pub struct Buffer<L = crate::util::Remaining> {
+pub struct Buffer<L> {
     inner: bytes::Bytes,
     _marker: std::marker::PhantomData<L>,
 }
