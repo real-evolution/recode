@@ -11,7 +11,6 @@ pub(crate) struct Recode {
     ident: syn::Ident,
     generics: syn::Generics,
     data: darling::ast::Data<(), RecodeField>,
-    #[darling(default)]
     error: Option<syn::Type>,
     #[darling(default)]
     decoder: decoder::DecoderOpts,
@@ -26,6 +25,7 @@ struct RecodeField {
     ty: syn::Type,
     skip: Flag,
     skip_if: Option<syn::Expr>,
+    with: Option<syn::Type>,
     #[darling(default)]
     decoder: decoder::DecoderFieldOpts,
     #[darling(default)]
@@ -75,6 +75,7 @@ impl Recode {
                         f.encoder.skip
                     },
                     skip_if: f.skip_if.or(f.encoder.skip_if),
+                    with: f.decoder.with.or(f.with),
                     ..f.decoder
                 },
             })
@@ -96,6 +97,7 @@ impl Recode {
                         f.encoder.skip
                     },
                     skip_if: f.skip_if.or(f.encoder.skip_if),
+                    with: f.encoder.with.or(f.with),
                     ..f.encoder
                 },
             })
