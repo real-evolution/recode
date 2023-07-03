@@ -12,6 +12,7 @@ license-file.workspace = true
 
 [dependencies]
 bytes = { version = "1" }
+delegate = { version = "0" }
 paste = { version = "1" }
 thiserror = { version = "1" }
 
