@@ -6,7 +6,7 @@ macro_rules! define_encoding {
     ($name:ident; doc: $d:literal; validate: |$i:ident| $v:stmt) => {
         #[derive(Debug)]
         #[doc = $d]
-        pub struct $name<L = ()>(Buffer<L>);
+        pub struct $name<L = crate::util::Remaining>(Buffer<L>);
 
         impl<B, L> Decoder<B> for $name<L>
         where
