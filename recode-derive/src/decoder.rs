@@ -17,11 +17,11 @@ pub(crate) struct Decoder {
 #[derive(Clone, Debug, Default, darling::FromMeta)]
 #[darling(default)]
 pub(crate) struct DecoderOpts {
-    disable: Flag,
-    output_type: Option<syn::Type>,
-    error: Option<syn::Type>,
-    buffer_type: Option<syn::Type>,
-    buffer_name: Option<syn::Ident>,
+    pub(crate) disable: Flag,
+    pub(crate) output_type: Option<syn::Type>,
+    pub(crate) error: Option<syn::Type>,
+    pub(crate) buffer_type: Option<syn::Type>,
+    pub(crate) buffer_name: Option<syn::Ident>,
 }
 
 #[derive(Debug, darling::FromField)]
@@ -36,11 +36,11 @@ pub(crate) struct DecoderField {
 #[derive(Clone, Debug, Default, darling::FromMeta)]
 #[darling(default)]
 pub(crate) struct DecoderFieldOpts {
-    skip: Flag,
-    skip_if: Option<syn::Expr>,
-    map: Option<syn::Expr>,
-    with: Option<syn::Type>,
-    validate: Option<syn::Expr>,
+    pub(crate) skip: Flag,
+    pub(crate) skip_if: Option<syn::Expr>,
+    pub(crate) map: Option<syn::Expr>,
+    pub(crate) with: Option<syn::Type>,
+    pub(crate) validate: Option<syn::Expr>,
 }
 
 impl darling::ToTokens for Decoder {

@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use darling::util::Flag;
+
 use crate::{decoder, encoder};
 
 #[derive(Debug, darling::FromDeriveInput)]
@@ -9,6 +11,8 @@ pub(crate) struct Recode {
     ident: syn::Ident,
     generics: syn::Generics,
     data: darling::ast::Data<(), RecodeField>,
+    #[darling(default)]
+    error: Option<syn::Type>,
     #[darling(default)]
     decoder: decoder::DecoderOpts,
     #[darling(default)]
@@ -20,6 +24,8 @@ pub(crate) struct Recode {
 struct RecodeField {
     ident: Option<syn::Ident>,
     ty: syn::Type,
+    skip: Flag,
+    skip_if: Option<syn::Expr>,
     #[darling(default)]
     decoder: decoder::DecoderFieldOpts,
     #[darling(default)]
@@ -32,7 +38,10 @@ impl darling::ToTokens for Recode {
             ident: self.ident.clone(),
             generics: self.generics.clone(),
             data: self.get_decoder_data(),
-            decoder: self.decoder.clone(),
+            decoder: decoder::DecoderOpts {
+                error: self.decoder.error.clone().or(self.error.clone()),
+                ..self.decoder.clone()
+            },
         }
         .to_tokens(tokens);
 
@@ -40,7 +49,10 @@ impl darling::ToTokens for Recode {
             ident: self.ident.clone(),
             generics: self.generics.clone(),
             data: self.get_encoder_data(),
-            encoder: self.encoder.clone(),
+            encoder: encoder::EncoderOpts {
+                error: self.encoder.error.clone().or(self.error.clone()),
+                ..self.encoder.clone()
+            },
         }
         .to_tokens(tokens);
     }
@@ -56,7 +68,15 @@ impl Recode {
             .map_struct_fields(|f| decoder::DecoderField {
                 ident: f.ident,
                 ty: f.ty,
-                decoder: f.decoder,
+                decoder: decoder::DecoderFieldOpts {
+                    skip: if f.skip.is_present() {
+                        Flag::present()
+                    } else {
+                        f.encoder.skip
+                    },
+                    skip_if: f.skip_if.or(f.encoder.skip_if),
+                    ..f.decoder
+                },
             })
     }
 
@@ -69,7 +89,15 @@ impl Recode {
             .map_struct_fields(|f| encoder::EncoderField {
                 ident: f.ident,
                 ty: f.ty,
-                encoder: f.encoder,
+                encoder: encoder::EncoderFieldOpts {
+                    skip: if f.skip.is_present() {
+                        Flag::present()
+                    } else {
+                        f.encoder.skip
+                    },
+                    skip_if: f.skip_if.or(f.encoder.skip_if),
+                    ..f.encoder
+                },
             })
     }
 }

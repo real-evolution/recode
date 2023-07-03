@@ -16,12 +16,12 @@ pub(crate) struct Encoder {
 #[derive(Clone, Debug, Default, darling::FromMeta)]
 #[darling(default)]
 pub(crate) struct EncoderOpts {
-    disable: Flag,
-    error: Option<syn::Type>,
-    buffer_type: Option<syn::Type>,
-    buffer_name: Option<syn::Ident>,
-    input_type: Option<syn::Type>,
-    input_name: Option<syn::Ident>,
+    pub(crate) disable: Flag,
+    pub(crate) error: Option<syn::Type>,
+    pub(crate) buffer_type: Option<syn::Type>,
+    pub(crate) buffer_name: Option<syn::Ident>,
+    pub(crate) input_type: Option<syn::Type>,
+    pub(crate) input_name: Option<syn::Ident>,
 }
 
 #[derive(Debug, darling::FromField)]
@@ -36,10 +36,10 @@ pub(crate) struct EncoderField {
 #[derive(Clone, Debug, Default, darling::FromMeta)]
 #[darling(default)]
 pub(crate) struct EncoderFieldOpts {
-    skip: Flag,
-    skip_if: Option<syn::Expr>,
-    map: Option<syn::Expr>,
-    with: Option<syn::Type>,
+    pub(crate) skip: Flag,
+    pub(crate) skip_if: Option<syn::Expr>,
+    pub(crate) map: Option<syn::Expr>,
+    pub(crate) with: Option<syn::Type>,
 }
 
 impl darling::ToTokens for Encoder {
