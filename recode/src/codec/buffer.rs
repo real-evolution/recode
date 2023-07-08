@@ -46,6 +46,22 @@ impl<L> Buffer<L> {
     pub fn from_static(bytes: &'static [u8]) -> Self {
         Self::new(bytes.into())
     }
+
+    /// Gets a reference to the inner [`bytes::Bytes`] instance.
+    pub const fn as_inner(&self) -> &bytes::Bytes {
+        &self.inner
+    }
+
+    /// Gets a mutable reference to the inner [`bytes::Bytes`] instance.
+    pub fn as_inner_mut(&mut self) -> &mut bytes::Bytes {
+        &mut self.inner
+    }
+
+    /// Consumes the [`Buffer<L>`] object and returns the inner
+    /// [`bytes::Bytes`] instance.
+    pub fn into_inner(self) -> bytes::Bytes {
+        self.inner
+    }
 }
 
 impl<B, L> Decoder<B> for Buffer<L>
@@ -89,17 +105,25 @@ where
     }
 }
 
-impl<L> Deref for Buffer<L> {
-    type Target = bytes::Bytes;
+impl<L> std::ops::Deref for Buffer<L> {
+    type Target = [u8];
 
     fn deref(&self) -> &Self::Target {
-        &self.inner
+        self.inner.as_ref()
     }
 }
 
 impl<L> From<&'static [u8]> for Buffer<L> {
+    #[inline(always)]
     fn from(value: &'static [u8]) -> Self {
         Self::from_static(value)
+    }
+}
+
+impl<L> From<bytes::Bytes> for Buffer<L> {
+    #[inline(always)]
+    fn from(value: bytes::Bytes) -> Self {
+        Self::new(value)
     }
 }
 
