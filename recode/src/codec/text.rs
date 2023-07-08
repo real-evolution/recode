@@ -4,7 +4,7 @@ use crate::{Decoder, Encoder, Error};
 
 macro_rules! define_encoding {
     ($name:ident; doc: $d:literal; validate: |$i:ident| $v:stmt) => {
-        #[derive(Debug)]
+        #[derive(Debug, Default)]
         #[doc = $d]
         pub struct $name<L = crate::util::Remaining>(Buffer<L>);
 
@@ -59,7 +59,7 @@ define_encoding! {
     Ascii;
     doc: "A type that represents a text encoded as ASCII";
     validate: |inner| {
-        if !inner.is_ascii() {
+        if !inner.as_ref().is_ascii() {
             return Err(TextError::Ascii("invalid ascii data"))?;
         }
     }
