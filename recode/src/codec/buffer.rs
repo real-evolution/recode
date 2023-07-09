@@ -101,6 +101,11 @@ where
 
         Ok(())
     }
+
+    #[inline]
+    fn size_of(item: &Self, buf: &B) -> usize {
+        L::size_of(&item.inner.len(), buf) + item.inner.len()
+    }
 }
 
 impl<L> std::ops::Deref for Buffer<L> {

@@ -35,6 +35,11 @@ macro_rules! define_encoding {
             fn encode(item: &Self, buf: &mut B) -> Result<(), Self::Error> {
                 Ok(item.0.encode_to(buf)?)
             }
+
+            #[inline]
+            fn size_of(item: &Self, buf: &B) -> usize {
+                item.0.size(buf)
+            }
         }
 
         impl<L> std::ops::Deref for $name<L> {

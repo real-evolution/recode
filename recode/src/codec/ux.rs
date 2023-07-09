@@ -39,6 +39,11 @@ macro_rules! impl_ux {
 
                 Ok(())
             }
+
+            #[inline]
+            fn size_of(_: &$t, _: &B) -> usize {
+                $s
+            }
         }
 
         impl<B: Buf> Decoder<B, usize> for $t {
@@ -61,6 +66,11 @@ macro_rules! impl_ux {
                     .map_err(|_| super::number::TryFromIntError(()))?;
 
                 <$t>::new(value).encode_to(buf).map_err(Into::into)
+            }
+
+            #[inline]
+            fn size_of(_: &usize, _: &B) -> usize {
+                $s
             }
         }
     };

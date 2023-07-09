@@ -13,6 +13,7 @@ where
 {
     type Error = crate::Error;
 
+    #[inline]
     fn decode(buf: &mut B) -> Result<usize, Self::Error> {
         Ok(buf.remaining())
     }
@@ -21,7 +22,13 @@ where
 impl<B> crate::Encoder<B, usize> for Remaining {
     type Error = crate::Error;
 
+    #[inline]
     fn encode(_input: &usize, _buf: &mut B) -> Result<(), Self::Error> {
         Ok(())
+    }
+
+    #[inline]
+    fn size_of(_input: &usize, _: &B) -> usize {
+        0
     }
 }

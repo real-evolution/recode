@@ -6,18 +6,21 @@ use crate::{Decoder, Encoder};
 pub struct TryFromIntError(pub(crate) ());
 
 impl From<std::num::TryFromIntError> for TryFromIntError {
+    #[inline]
     fn from(_: std::num::TryFromIntError) -> TryFromIntError {
         TryFromIntError(())
     }
 }
 
 impl From<std::convert::Infallible> for TryFromIntError {
+    #[inline]
     fn from(_: std::convert::Infallible) -> TryFromIntError {
         TryFromIntError(())
     }
 }
 
 impl std::fmt::Display for TryFromIntError {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("integer overflow")
     }
@@ -30,6 +33,7 @@ macro_rules! impl_int {
             impl<B: Buf> Decoder<B> for $t {
                 type Error = crate::Error;
 
+                #[inline]
                 fn decode(buf: &mut B) -> Result<Self, Self::Error> {
                     const FULL_EN: usize = std::mem::size_of::<$t>();
 
@@ -48,20 +52,25 @@ macro_rules! impl_int {
             impl<B: BufMut> Encoder<B> for $t {
                 type Error = std::convert::Infallible;
 
+                #[inline]
                 fn encode(item: &$t, buf: &mut B) -> Result<(), Self::Error> {
                     buf.[<put_ $t>](*item);
 
                     Ok(())
+                }
+
+                #[inline]
+                fn size_of(_: &$t, _: &B) -> usize {
+                    std::mem::size_of::<$t>()
                 }
             }
 
             impl<B: Buf> Decoder<B, usize> for $t {
                 type Error = crate::Error;
 
+                #[inline]
                 fn decode(buf: &mut B) -> Result<usize, Self::Error> {
-                    let value = <Self as crate::Decoder<B>>::decode(buf)?;
-
-                    usize::try_from(value)
+                    usize::try_from(<Self as crate::Decoder<B>>::decode(buf)?)
                         .map_err(TryFromIntError::from)
                         .map_err(Into::into)
                 }
@@ -70,11 +79,17 @@ macro_rules! impl_int {
             impl<B: BufMut> Encoder<B, usize> for $t {
                 type Error = crate::Error;
 
+                #[inline]
                 fn encode(item: &usize, buf: &mut B) -> Result<(), Self::Error> {
-                    let value = Self::try_from(*item)
-                        .map_err(TryFromIntError::from)?;
+                    Self::try_from(*item)
+                        .map_err(TryFromIntError::from)?
+                        .encode_to(buf)
+                        .map_err(Into::into)
+                }
 
-                    value.encode_to(buf).map_err(Into::into)
+                #[inline]
+                fn size_of(_: &usize, _: &B) -> usize {
+                    std::mem::size_of::<$t>()
                 }
             }
         }
