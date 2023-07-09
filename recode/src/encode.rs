@@ -13,6 +13,18 @@ pub trait Encoder<B, Item = Self> {
     /// * `item` - The input to encode.
     /// * `buf` - The output buffer to write the encoded input to.
     fn encode(item: &Item, buf: &mut B) -> Result<(), Self::Error>;
+
+    /// Returns the number of bytes required to encode the given input.
+    ///
+    /// This method is useful for pre-allocating buffers that will be used for encoding.
+    ///
+    /// # Arguments
+    /// * `item` - The input to encode.
+    /// * `buf` - The output buffer used for encoding.
+    ///
+    /// # Returns
+    /// The number of bytes required to encode the given input.
+    fn size_of(item: &Item, buf: &B) -> usize;
 }
 
 #[cfg(test)]
