@@ -30,6 +30,7 @@ pub trait Encoder<B, Item = Self> {
 #[cfg(test)]
 mod tests {
     use crate as recode;
+    use crate::util::EncoderExt;
     use crate::Encoder;
 
     #[test]
@@ -59,6 +60,14 @@ mod tests {
         };
 
         let mut buf = bytes::BytesMut::new();
+
+        assert_eq!(test_item.age.size(&buf), 4);
+        assert_eq!(test_item.salary.size(&buf), 8);
+        assert_eq!(test_item.first_name.size(&buf), 1 + 5);
+        assert_eq!(test_item.last_name.size(&buf), 2 + 12);
+        assert_eq!(test_item.image.size(&buf), 4 + 32);
+        assert_eq!(test_item.size(&buf), 4 + 8 + (1 + 5) + (2 + 12) + (4 + 32));
+
         TestType::encode(&test_item, &mut buf).unwrap();
 
         const BUF: [u8; 68] = [
