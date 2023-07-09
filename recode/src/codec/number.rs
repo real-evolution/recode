@@ -138,6 +138,8 @@ mod tests {
 
                     let mut bytes = BytesMut::new();
 
+                    assert_eq!(LEN, value.size(&bytes));
+
                     value.encode_to(&mut bytes).unwrap();
 
                     assert_eq!(LEN, bytes.len());

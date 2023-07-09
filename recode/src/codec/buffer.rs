@@ -153,6 +153,7 @@ mod tests {
 
         assert_eq!(buffer.len(), len);
         assert_eq!(buffer.as_ref(), bytes.as_ref());
+        assert_eq!(buffer.size(&bytes), len);
 
         let mut encoded = BytesMut::new();
         buffer.encode_to(&mut encoded).unwrap();
@@ -174,6 +175,11 @@ mod tests {
         let mut bytes = BytesMut::new();
 
         buffer.encode_to(&mut bytes).unwrap();
+
+        assert_eq!(
+            buffer.size(&bytes),
+            buffer.len() + u32::size_of(&buffer.len(), &bytes)
+        );
 
         assert_eq!(buffer.len(), use_len);
         assert_eq!(bytes.len(), 4 + use_len);
@@ -206,6 +212,11 @@ mod tests {
 
                     let buffer = super::Buffer::<$t>::new(pool.slice(0..use_len));
                     let mut bytes = BytesMut::new();
+
+                    assert_eq!(
+                        buffer.size(&bytes),
+                        buffer.len() + <$t>::size_of(&buffer.len(), &bytes)
+                    );
 
                     buffer.encode_to(&mut bytes).unwrap();
 

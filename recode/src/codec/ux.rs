@@ -117,6 +117,8 @@ mod tests {
                     let value = <$t>::new(repr);
                     let mut bytes = BytesMut::new();
 
+                    assert_eq!($s, value.size(&bytes));
+
                     value.encode_to(&mut bytes).unwrap();
 
                     assert_eq!($s, bytes.len());
