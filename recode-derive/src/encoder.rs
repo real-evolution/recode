@@ -1,4 +1,4 @@
-use darling::util::Flag;
+use darling::{util::Flag, ToTokens};
 
 use crate::util::*;
 
@@ -40,6 +40,7 @@ pub(crate) struct EncoderFieldOpts {
     pub(crate) skip_if: Option<syn::Expr>,
     pub(crate) map: Option<syn::Expr>,
     pub(crate) with: Option<syn::Type>,
+    pub(crate) size: Option<syn::Expr>,
 }
 
 impl darling::ToTokens for Encoder {
@@ -94,6 +95,10 @@ impl darling::ToTokens for Encoder {
             .iter()
             .map(|&f| f.to_encode_stmt(&input_name, &buffer_name));
 
+        let size_exprs = fields
+            .iter()
+            .map(|&f| f.to_size_expr(&input_name, &buffer_name));
+
         let (imp, ty, wher) = generics.split_for_impl();
 
         tokens.extend(quote::quote! {
@@ -109,6 +114,13 @@ impl darling::ToTokens for Encoder {
                     #( #field_stmts )*
 
                     Ok(())
+                }
+
+                fn size_of(
+                    #input_name: &#input_type,
+                    #buffer_name: &#buffer_type
+                ) -> usize {
+                    #( #size_exprs )+*
                 }
             }
 
@@ -133,6 +145,7 @@ impl EncoderField {
                     skip_if,
                     map,
                     with,
+                    size: _,
                 },
         } = self;
 
@@ -153,5 +166,25 @@ impl EncoderField {
             .as_ref()
             .map(|s| quote::quote! (if !(#s) { #stmt }))
             .unwrap_or(stmt)
+    }
+
+    pub(crate) fn to_size_expr(
+        &self,
+        input_ident: &syn::Ident,
+        buf_ident: &syn::Ident,
+    ) -> proc_macro2::TokenStream {
+        use quote::quote;
+
+        if let Some(ref expr) = self.encoder.size {
+            return expr.to_token_stream();
+        }
+
+        let ident = self.ident.as_ref();
+        let ty = &self.ty;
+        let with = self.encoder.with.as_ref().unwrap_or(&self.ty);
+
+        quote! {
+            <#with as recode::Encoder<_, #ty>>::size_of(&#input_ident.#ident, #buf_ident)
+        }
     }
 }
