@@ -1,6 +1,6 @@
 [package]
 name = "recode"
-version = "0.3.2"
+version = "0.4.0"
 description = "Reusable encoding/decoding constructs for Rust"
 keywords = ["encode", "decode", "serialize", "deserliaze", "io"]
 edition.workspace = true

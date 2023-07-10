@@ -1,6 +1,6 @@
 [package]
 name = "recode-derive"
-version = "0.3.0"
+version = "0.4.0"
 description = "`recode` macros. Not intended to be used directly"
 keywords = ["encode", "decode", "serialize", "deserliaze", "io"]
 edition.workspace = true
