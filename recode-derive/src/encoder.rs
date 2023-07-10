@@ -120,7 +120,7 @@ impl darling::ToTokens for Encoder {
                     #input_name: &#input_type,
                     #buffer_name: &#buffer_type
                 ) -> usize {
-                    #( #size_exprs )+*
+                    0 #( + #size_exprs )*
                 }
             }
 
