@@ -4,7 +4,7 @@ use crate::{Decoder, Encoder, Error};
 
 macro_rules! define_encoding {
     ($name:ident; doc: $d:literal; validate: |$i:ident| $v:stmt) => {
-        #[derive(Debug, Default)]
+        #[derive(Debug, Clone, Default)]
         #[doc = $d]
         pub struct $name<L = crate::util::Remaining>(Buffer<L>);
 
