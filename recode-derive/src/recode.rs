@@ -12,6 +12,7 @@ pub(crate) struct Recode {
     generics: syn::Generics,
     data: darling::ast::Data<(), RecodeField>,
     error: Option<syn::Type>,
+    buffer_name: Option<syn::Ident>,
     #[darling(default)]
     decoder: decoder::DecoderOpts,
     #[darling(default)]
@@ -40,6 +41,11 @@ impl darling::ToTokens for Recode {
             data: self.get_decoder_data(),
             decoder: decoder::DecoderOpts {
                 error: self.decoder.error.clone().or(self.error.clone()),
+                buffer_name: self
+                    .decoder
+                    .buffer_name
+                    .clone()
+                    .or(self.buffer_name.clone()),
                 ..self.decoder.clone()
             },
         }
@@ -51,6 +57,11 @@ impl darling::ToTokens for Recode {
             data: self.get_encoder_data(),
             encoder: encoder::EncoderOpts {
                 error: self.encoder.error.clone().or(self.error.clone()),
+                buffer_name: self
+                    .encoder
+                    .buffer_name
+                    .clone()
+                    .or(self.buffer_name.clone()),
                 ..self.encoder.clone()
             },
         }
