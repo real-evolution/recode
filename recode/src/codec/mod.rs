@@ -1,4 +1,5 @@
 mod buffer;
+mod length_prefixed;
 mod number;
 mod text;
 
@@ -6,13 +7,13 @@ mod text;
 mod ux;
 
 #[doc(inline)]
-pub use buffer::*;
+pub use buffer::{Buffer, UnprefixedBuffer};
 #[doc(inline)]
-pub use bytes::*;
+pub use length_prefixed::LengthPrefixed;
 #[doc(inline)]
 pub use number::*;
 #[doc(inline)]
-pub use text::*;
+pub use text::{Ascii, TextError, Utf8};
 
 #[cfg(feature = "ux")]
 pub use self::ux::*;
