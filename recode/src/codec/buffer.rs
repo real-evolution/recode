@@ -190,6 +190,13 @@ impl<L> From<bytes::Bytes> for Buffer<L> {
     }
 }
 
+impl<L> From<Buffer<L>> for bytes::Bytes {
+    #[inline(always)]
+    fn from(value: Buffer<L>) -> Self {
+        value.into_inner()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use bytes::{Bytes, BytesMut};
