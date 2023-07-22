@@ -154,24 +154,25 @@ where
     }
 }
 
-impl<L> std::ops::Deref for Buffer<L> {
-    type Target = [u8];
-
-    fn deref(&self) -> &Self::Target {
+impl<L> AsRef<[u8]> for Buffer<L> {
+    #[inline(always)]
+    fn as_ref(&self) -> &[u8] {
         self.inner.as_ref()
     }
 }
 
-impl<L> AsRef<bytes::Bytes> for Buffer<L> {
+impl<L> std::ops::Deref for Buffer<L> {
+    type Target = bytes::Bytes;
+
     #[inline(always)]
-    fn as_ref(&self) -> &bytes::Bytes {
+    fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<L> AsMut<bytes::Bytes> for Buffer<L> {
+impl<L> std::ops::DerefMut for Buffer<L> {
     #[inline(always)]
-    fn as_mut(&mut self) -> &mut bytes::Bytes {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
@@ -316,9 +317,23 @@ mod tests {
                         buffer.len() + <$t>::size_of(&buffer.len(), &bytes)
                     );
 
+                    Option::<Buffer::<$t>>::default()
+                        .encode_to(&mut bytes)
+                        .unwrap();
+
+                    assert_eq!(bytes.len(), $s);
+                    assert!(bytes.iter().all(|&b| b == 0));
+
+                    let decoded = Option::<Buffer::<$t>>::decode(&mut bytes)
+                        .unwrap();
+
+                    assert!(decoded.is_none());
+                    assert!(bytes.is_empty());
+
                     buffer.encode_to(&mut bytes).unwrap();
 
-                    let len_bytes = &(use_len as $r).to_be_bytes()[(REPR_LEN - $s)..];
+                    let len_bytes = &(use_len as $r)
+                        .to_be_bytes()[(REPR_LEN - $s)..];
 
                     assert_eq!(buffer.len(), use_len);
                     assert_eq!(bytes.len(), $s + use_len);
