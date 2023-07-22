@@ -12,9 +12,9 @@ pub type UnprefixedBuffer = Buffer<crate::util::Remaining>;
 /// A wrapper type for consecutive bytes.
 ///
 /// # Type Parameters
-/// - `L`: If not [`()`], it should be a numerical type that implements
-/// [`Decoder<Output = L`] and [`TryFrom<usize>`]` which represents the length
-/// prefix of the buffer.
+/// * `L` - If not `()`, it should be a numerical type that implements
+///   [`Decoder<Output = L>`] and [`TryFrom<usize>`]` which represents the
+///   length prefix of the buffer.
 #[derive(Debug, Clone, Default)]
 pub struct Buffer<L> {
     inner: bytes::Bytes,
