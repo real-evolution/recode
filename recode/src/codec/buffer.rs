@@ -1,5 +1,10 @@
-use crate::bytes::{Buf, BufMut};
-use crate::{Decoder, Encoder, Error};
+use crate::{
+    bytes::{Buf, BufMut},
+    util::EncoderExt,
+    Decoder,
+    Encoder,
+    Error,
+};
 
 /// A type alias for a [`Buffer`] without a length prefix.
 pub type UnprefixedBuffer = Buffer<crate::util::Remaining>;
@@ -43,16 +48,6 @@ impl<L> Buffer<L> {
     /// A new [`Buffer<L>`] object.
     pub fn from_static(bytes: &'static [u8]) -> Self {
         Self::new(bytes.into())
-    }
-
-    /// Gets a reference to the inner [`bytes::Bytes`] instance.
-    pub const fn as_inner(&self) -> &bytes::Bytes {
-        &self.inner
-    }
-
-    /// Gets a mutable reference to the inner [`bytes::Bytes`] instance.
-    pub fn as_inner_mut(&mut self) -> &mut bytes::Bytes {
-        &mut self.inner
     }
 
     /// Consumes the [`Buffer<L>`] object and returns the inner
@@ -113,6 +108,20 @@ impl<L> std::ops::Deref for Buffer<L> {
 
     fn deref(&self) -> &Self::Target {
         self.inner.as_ref()
+    }
+}
+
+impl<L> AsRef<bytes::Bytes> for Buffer<L> {
+    #[inline(always)]
+    fn as_ref(&self) -> &bytes::Bytes {
+        &self.inner
+    }
+}
+
+impl<L> AsMut<bytes::Bytes> for Buffer<L> {
+    #[inline(always)]
+    fn as_mut(&mut self) -> &mut bytes::Bytes {
+        &mut self.inner
     }
 }
 
