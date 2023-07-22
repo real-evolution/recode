@@ -55,6 +55,19 @@ impl<L> Buffer<L> {
     pub fn into_inner(self) -> bytes::Bytes {
         self.inner
     }
+
+    #[inline]
+    fn take_n_bytes<B: Buf>(buf: &mut B, len: usize) -> crate::Result<Self> {
+        if buf.remaining() < len {
+            return Err(Error::BytesNeeded {
+                needed: len - buf.remaining(),
+                full_len: len,
+                available: buf.remaining(),
+            });
+        }
+
+        Ok(Self::new(buf.copy_to_bytes(len)))
+    }
 }
 
 impl<B, L> Decoder<B> for Buffer<L>
@@ -65,18 +78,30 @@ where
 {
     type Error = Error;
 
+    #[inline]
     fn decode(buf: &mut B) -> Result<Self, Self::Error> {
         let len = L::decode(buf)?;
 
-        if buf.remaining() < len {
-            return Err(Error::BytesNeeded {
-                needed: len - buf.remaining(),
-                full_len: len,
-                available: buf.remaining(),
-            });
-        }
+        Self::take_n_bytes(buf, len)
+    }
+}
 
-        Ok(Self::new(buf.copy_to_bytes(len)))
+impl<B, L> Decoder<B> for Option<Buffer<L>>
+where
+    B: Buf,
+    L: Decoder<B, usize>,
+    Error: From<<L as Decoder<B, usize>>::Error>,
+{
+    type Error = Error;
+
+    #[inline]
+    fn decode(buf: &mut B) -> Result<Self, Self::Error> {
+        let ret = match L::decode(buf)? {
+            | 0 => None,
+            | len => Some(Buffer::take_n_bytes(buf, len)?),
+        };
+
+        Ok(ret)
     }
 }
 
@@ -100,6 +125,32 @@ where
     #[inline]
     fn size_of(item: &Self, buf: &B) -> usize {
         L::size_of(&item.inner.len(), buf) + item.inner.len()
+    }
+}
+
+impl<B, L> Encoder<B> for Option<Buffer<L>>
+where
+    B: BufMut,
+    L: Encoder<B, usize> + Default,
+    Error: From<<L as Encoder<B, usize>>::Error>,
+{
+    type Error = Error;
+
+    fn encode(item: &Self, buf: &mut B) -> Result<(), Self::Error> {
+        let Some(buffer) = item else {
+            L::encode(&0, buf)?;
+            return Ok(());
+        };
+
+        buffer.encode_to(buf)
+    }
+
+    #[inline]
+    fn size_of(item: &Self, buf: &B) -> usize {
+        match item {
+            | Some(inner) => inner.size(buf),
+            | None => 0,
+        }
     }
 }
 
@@ -146,10 +197,41 @@ mod tests {
 
     #[cfg(all(test, feature = "ux"))]
     use crate::codec::ux::*;
+    use crate::{codec::*, util::EncoderExt, *};
 
-    use crate::codec::*;
-    use crate::util::EncoderExt;
-    use crate::*;
+    #[test]
+    fn optional_unprefixed_test() {
+        let buffer =
+            Option::<UnprefixedBuffer>::decode(&mut BytesMut::new()).unwrap();
+
+        assert!(buffer.is_none());
+
+        let len: usize = (128..=10240).fake();
+        let bytes = BytesMut::from_iter((0..len).map(|_| Faker.fake::<u8>()));
+
+        assert_eq!(len, bytes.len());
+
+        let buffer: UnprefixedBuffer =
+            Option::<UnprefixedBuffer>::decode(&mut bytes.clone())
+                .unwrap()
+                .unwrap();
+
+        assert_eq!(buffer.len(), len);
+        assert_eq!(buffer.as_ref(), bytes.as_ref());
+        assert_eq!(buffer.size(&bytes), len);
+
+        let mut encoded = BytesMut::new();
+        Option::<UnprefixedBuffer>::default()
+            .encode_to(&mut encoded)
+            .unwrap();
+
+        assert!(encoded.is_empty());
+
+        buffer.encode_to(&mut encoded).unwrap();
+
+        assert_eq!(encoded.len(), len);
+        assert_eq!(encoded.as_ref(), buffer.as_ref());
+    }
 
     #[test]
     fn unprefixed_decode_test() {
