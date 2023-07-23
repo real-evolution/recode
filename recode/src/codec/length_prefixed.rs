@@ -109,3 +109,159 @@ fn take_n_bytes<B: Buf>(buf: &mut B, len: usize) -> crate::Result<Bytes> {
 
     Ok(buf.copy_to_bytes(len))
 }
+#[cfg(test)]
+mod tests {
+    use bytes::{Bytes, BytesMut};
+    use fake::{Fake, Faker};
+
+    #[cfg(all(test, feature = "ux"))]
+    use crate::codec::ux::*;
+    use crate::{
+        codec::{length_prefixed::Unprefixed, *},
+        Decoder,
+        Encoder,
+    };
+
+    #[test]
+    fn optional_unprefixed_test() {
+        let buffer: Option<Bytes> =
+            Unprefixed::decode(&mut BytesMut::new()).unwrap();
+
+        assert!(buffer.is_none());
+
+        let len: usize = (128..=10240).fake();
+        let bytes = BytesMut::from_iter((0..len).map(|_| Faker.fake::<u8>()));
+
+        assert_eq!(len, bytes.len());
+
+        let buffer: Option<Bytes> =
+            Unprefixed::decode(&mut bytes.clone()).unwrap();
+        let buffer = buffer.unwrap();
+
+        assert_eq!(buffer.len(), len);
+        assert_eq!(buffer.as_ref(), bytes.as_ref());
+        assert_eq!(Unprefixed::size_of(&buffer, &bytes), len);
+
+        let mut encoded = BytesMut::new();
+        Unprefixed::encode(&Bytes::default(), &mut encoded).unwrap();
+
+        assert!(encoded.is_empty());
+
+        Unprefixed::encode(&buffer, &mut encoded).unwrap();
+
+        assert_eq!(encoded.len(), len);
+        assert_eq!(encoded.as_ref(), buffer.as_ref());
+    }
+
+    #[test]
+    fn unprefixed_decode_test() {
+        let len: usize = (128..=10240).fake();
+        let bytes = BytesMut::from_iter((0..len).map(|_| Faker.fake::<u8>()));
+
+        assert_eq!(len, bytes.len());
+
+        let buffer: Bytes = Unprefixed::decode(&mut bytes.clone()).unwrap();
+
+        assert_eq!(buffer.len(), len);
+        assert_eq!(buffer.as_ref(), bytes.as_ref());
+        assert_eq!(Unprefixed::size_of(&buffer, &bytes), len);
+
+        let mut encoded = BytesMut::new();
+        Unprefixed::encode(&buffer, &mut encoded).unwrap();
+
+        assert_eq!(encoded.len(), len);
+        assert_eq!(encoded.as_ref(), buffer.as_ref());
+    }
+
+    #[test]
+    fn whole_prefix_test() {
+        let full_len: usize = (128..=10240).fake();
+        let use_len: usize = (0..full_len).fake();
+        let pool = Bytes::from_iter((0..full_len).map(|_| Faker.fake::<u8>()));
+
+        assert!(use_len < full_len);
+        assert!(pool.len() == full_len);
+
+        let buffer = pool.slice(0..use_len);
+        let mut bytes = BytesMut::new();
+
+        LengthPrefixed::<u32>::encode(&buffer, &mut bytes).unwrap();
+
+        assert_eq!(
+            LengthPrefixed::<u32>::size_of(&buffer, &bytes),
+            buffer.len() + u32::size_of(&buffer.len(), &bytes)
+        );
+
+        assert_eq!(buffer.len(), use_len);
+        assert_eq!(bytes.len(), 4 + use_len);
+        assert_eq!((use_len as u32).to_be_bytes(), bytes[..4]);
+        assert_eq!(buffer.as_ref(), bytes[4..].as_ref());
+
+        let decoded: Bytes = LengthPrefixed::<u32>::decode(&mut bytes).unwrap();
+
+        assert_eq!(decoded.len(), use_len);
+        assert_eq!(decoded.as_ref(), buffer.as_ref());
+    }
+
+    macro_rules! test_ux_len {
+        ($t:ty; size: $s:literal; rep: $r:ty ) => {
+            paste::paste! {
+                #[test]
+                #[cfg(all(test, feature = "ux"))]
+                fn [<sub_prefix_test_ $t>]() {
+                    const REPR_LEN: usize = std::mem::size_of::<$r>();
+
+                    let max: usize = <$t>::MAX.try_into().unwrap();
+                    let full_len: usize =
+                        (128..=std::cmp::min(10240usize, max)).fake();
+                    let use_len: usize = (0..full_len).fake();
+                    let pool =
+                        Bytes::from_iter((0..full_len).map(|_| Faker.fake::<u8>()));
+
+                    assert!(use_len < full_len);
+                    assert!(pool.len() == full_len);
+
+
+                    let buffer = pool.slice(0..use_len);
+                    let mut bytes = BytesMut::new();
+
+                    assert_eq!(
+                        LengthPrefixed::<$t>::size_of(&buffer, &bytes),
+                        buffer.len() + <$t>::size_of(&buffer.len(), &bytes)
+                    );
+
+                    LengthPrefixed::<$t>::encode(&None, &mut bytes).unwrap();
+
+                    assert_eq!(bytes.len(), $s);
+                    assert!(bytes.iter().all(|&b| b == 0));
+
+                    let decoded: Option<Bytes> = LengthPrefixed::<$t>::decode(&mut bytes)
+                        .unwrap();
+
+                    assert!(decoded.is_none());
+                    assert!(bytes.is_empty());
+
+                    LengthPrefixed::<$t>::encode(&buffer, &mut bytes).unwrap();
+
+                    let len_bytes = &(use_len as $r)
+                        .to_be_bytes()[(REPR_LEN - $s)..];
+
+                    assert_eq!(buffer.len(), use_len);
+                    assert_eq!(bytes.len(), $s + use_len);
+                    assert_eq!(len_bytes, &bytes[0..$s]);
+                    assert_eq!(buffer.as_ref(), bytes[$s..].as_ref());
+
+                    let decoded: Bytes = LengthPrefixed::<$t>::decode(&mut bytes).unwrap();
+
+                    assert_eq!(decoded.len(), use_len);
+                    assert_eq!(decoded.as_ref(), buffer.as_ref());
+                }
+            }
+        };
+    }
+
+    test_ux_len!(u24; size: 3; rep: u32);
+    test_ux_len!(u40; size: 5; rep: u64);
+    test_ux_len!(u48; size: 6; rep: u64);
+    test_ux_len!(u56; size: 7; rep: u64);
+}
