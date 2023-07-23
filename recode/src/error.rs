@@ -18,9 +18,6 @@ pub enum Error {
 
     #[error("integer conversion")]
     IntConversion(#[from] crate::codec::TryFromIntError),
-
-    #[error("text: {0}")]
-    Text(#[from] crate::codec::TextError),
 }
 
 impl From<std::convert::Infallible> for Error {
