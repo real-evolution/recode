@@ -2,7 +2,10 @@ use std::marker::PhantomData;
 
 use bytes::{Buf, BufMut, Bytes};
 
-use crate::{Decoder, Encoder, Error};
+use crate::{util::Remaining, Decoder, Encoder, Error};
+
+/// A buffer that is not prefixed with its length.
+pub type Unprefixed = LengthPrefixed<Remaining>;
 
 /// An encoder/decoder for length-prefixed buffers.
 ///
