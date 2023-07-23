@@ -1,5 +1,5 @@
 use crate::{
-    bytes::{Buf, BytesMut, BufMut},
+    bytes::{Buf, BufMut, BytesMut},
     util::EncoderExt,
     Decoder,
     Encoder,
@@ -52,18 +52,18 @@ macro_rules! impl_int {
                 }
             }
 
-            impl<B: BufMut> Encoder<B> for $t {
+            impl Encoder for $t {
                 type Error = std::convert::Infallible;
 
                 #[inline]
-                fn encode(item: &$t, buf: &mut B) -> Result<(), Self::Error> {
+                fn encode(item: &$t, buf: &mut BytesMut) -> Result<(), Self::Error> {
                     buf.[<put_ $t>](*item);
 
                     Ok(())
                 }
 
                 #[inline]
-                fn size_of(_: &$t, _: &B) -> usize {
+                fn size_of(_: &$t) -> usize {
                     std::mem::size_of::<$t>()
                 }
             }
@@ -79,11 +79,11 @@ macro_rules! impl_int {
                 }
             }
 
-            impl<B: BufMut> Encoder<B, usize> for $t {
+            impl Encoder<usize> for $t {
                 type Error = crate::Error;
 
                 #[inline]
-                fn encode(item: &usize, buf: &mut B) -> Result<(), Self::Error> {
+                fn encode(item: &usize, buf: &mut BytesMut) -> Result<(), Self::Error> {
                     Self::try_from(*item)
                         .map_err(TryFromIntError::from)?
                         .encode_to(buf)
@@ -91,7 +91,7 @@ macro_rules! impl_int {
                 }
 
                 #[inline]
-                fn size_of(_: &usize, _: &B) -> usize {
+                fn size_of(_: &usize) -> usize {
                     std::mem::size_of::<$t>()
                 }
             }
@@ -141,7 +141,7 @@ mod tests {
 
                     let mut bytes = BytesMut::new();
 
-                    assert_eq!(LEN, value.size(&bytes));
+                    assert_eq!(LEN, value.size());
 
                     value.encode_to(&mut bytes).unwrap();
 

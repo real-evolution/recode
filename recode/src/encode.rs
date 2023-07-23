@@ -1,6 +1,8 @@
+use bytes::BytesMut;
+
 /// A trait to be implemented by types that encode [`Item`] values into a
-/// buffer of type [`B`].
-pub trait Encoder<B, Item = Self> {
+/// buffer of type [`BytesMut`](bytes::BytesMut).
+pub trait Encoder<Item = Self> {
     /// The type of error that can occur if encoding fails.
     type Error;
 
@@ -12,7 +14,7 @@ pub trait Encoder<B, Item = Self> {
     /// # Arguments
     /// * `item` - The input to encode.
     /// * `buf` - The output buffer to write the encoded input to.
-    fn encode(item: &Item, buf: &mut B) -> Result<(), Self::Error>;
+    fn encode(item: &Item, buf: &mut BytesMut) -> Result<(), Self::Error>;
 
     /// Returns the number of bytes required to encode the given input.
     ///
@@ -25,7 +27,7 @@ pub trait Encoder<B, Item = Self> {
     ///
     /// # Returns
     /// The number of bytes required to encode the given input.
-    fn size_of(item: &Item, buf: &B) -> usize;
+    fn size_of(item: &Item) -> usize;
 }
 
 #[cfg(test)]
@@ -66,21 +68,15 @@ mod tests {
 
         let mut buf = bytes::BytesMut::new();
 
-        assert_eq!(test_item.age.size(&buf), 4);
-        assert_eq!(test_item.salary.size(&buf), 8);
+        assert_eq!(test_item.age.size(), 4);
+        assert_eq!(test_item.salary.size(), 8);
+        assert_eq!(LengthPrefixed::<u8>::size_of(&test_item.first_name), 1 + 5);
         assert_eq!(
-            LengthPrefixed::<u8>::size_of(&test_item.first_name, &buf),
-            1 + 5
-        );
-        assert_eq!(
-            LengthPrefixed::<u16>::size_of(&test_item.last_name, &buf),
+            LengthPrefixed::<u16>::size_of(&test_item.last_name),
             2 + 12
         );
-        assert_eq!(
-            LengthPrefixed::<u32>::size_of(&test_item.image, &buf),
-            4 + 32
-        );
-        assert_eq!(test_item.size(&buf), 4 + 8 + (1 + 5) + (2 + 12) + (4 + 32));
+        assert_eq!(LengthPrefixed::<u32>::size_of(&test_item.image), 4 + 32);
+        assert_eq!(test_item.size(), 4 + 8 + (1 + 5) + (2 + 12) + (4 + 32));
 
         TestType::encode(&test_item, &mut buf).unwrap();
 

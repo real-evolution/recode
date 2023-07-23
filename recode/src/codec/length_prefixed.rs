@@ -46,15 +46,14 @@ where
     }
 }
 
-impl<B, L> Encoder<B, Bytes> for LengthPrefixed<L>
+impl<L> Encoder<Bytes> for LengthPrefixed<L>
 where
-    B: BufMut,
-    L: Encoder<B, usize>,
-    Error: From<<L as Encoder<B, usize>>::Error>,
+    L: Encoder<usize>,
+    Error: From<<L as Encoder<usize>>::Error>,
 {
     type Error = Error;
 
-    fn encode(item: &Bytes, buf: &mut B) -> Result<(), Self::Error> {
+    fn encode(item: &Bytes, buf: &mut BytesMut) -> Result<(), Self::Error> {
         let len = item.len();
 
         L::encode(&len, buf)?;
@@ -64,20 +63,22 @@ where
     }
 
     #[inline]
-    fn size_of(item: &Bytes, buf: &B) -> usize {
-        L::size_of(&item.len(), buf) + item.len()
+    fn size_of(item: &Bytes) -> usize {
+        L::size_of(&item.len()) + item.len()
     }
 }
 
-impl<B, L> Encoder<B, Option<Bytes>> for LengthPrefixed<L>
+impl<L> Encoder<Option<Bytes>> for LengthPrefixed<L>
 where
-    B: BufMut,
-    L: Encoder<B, usize> + Default,
-    Error: From<<L as Encoder<B, usize>>::Error>,
+    L: Encoder<usize> + Default,
+    Error: From<<L as Encoder<usize>>::Error>,
 {
     type Error = Error;
 
-    fn encode(item: &Option<Bytes>, buf: &mut B) -> Result<(), Self::Error> {
+    fn encode(
+        item: &Option<Bytes>,
+        buf: &mut BytesMut,
+    ) -> Result<(), Self::Error> {
         let Some(buffer) = item else {
             L::encode(&0, buf)?;
             return Ok(());
@@ -87,9 +88,9 @@ where
     }
 
     #[inline]
-    fn size_of(item: &Option<Bytes>, buf: &B) -> usize {
+    fn size_of(item: &Option<Bytes>) -> usize {
         match item {
-            | Some(item) => Self::size_of(item, buf),
+            | Some(item) => Self::size_of(item),
             | None => 0,
         }
     }
@@ -139,7 +140,7 @@ mod tests {
 
         assert_eq!(buffer.len(), len);
         assert_eq!(buffer.as_ref(), bytes.as_ref());
-        assert_eq!(Unprefixed::size_of(&buffer, &bytes), len);
+        assert_eq!(Unprefixed::size_of(&buffer), len);
 
         let mut encoded = BytesMut::new();
         Unprefixed::encode(&Bytes::default(), &mut encoded).unwrap();
@@ -163,7 +164,7 @@ mod tests {
 
         assert_eq!(buffer.len(), len);
         assert_eq!(buffer.as_ref(), bytes.as_ref());
-        assert_eq!(Unprefixed::size_of(&buffer, &bytes), len);
+        assert_eq!(Unprefixed::size_of(&buffer), len);
 
         let mut encoded = BytesMut::new();
         Unprefixed::encode(&buffer, &mut encoded).unwrap();
@@ -187,8 +188,8 @@ mod tests {
         LengthPrefixed::<u32>::encode(&buffer, &mut bytes).unwrap();
 
         assert_eq!(
-            LengthPrefixed::<u32>::size_of(&buffer, &bytes),
-            buffer.len() + u32::size_of(&buffer.len(), &bytes)
+            LengthPrefixed::<u32>::size_of(&buffer),
+            buffer.len() + u32::size_of(&buffer.len())
         );
 
         assert_eq!(buffer.len(), use_len);
@@ -225,8 +226,8 @@ mod tests {
                     let mut bytes = BytesMut::new();
 
                     assert_eq!(
-                        LengthPrefixed::<$t>::size_of(&buffer, &bytes),
-                        buffer.len() + <$t>::size_of(&buffer.len(), &bytes)
+                        LengthPrefixed::<$t>::size_of(&buffer),
+                        buffer.len() + <$t>::size_of(&buffer.len())
                     );
 
                     LengthPrefixed::<$t>::encode(&None, &mut bytes).unwrap();

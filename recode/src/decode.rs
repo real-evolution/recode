@@ -1,7 +1,7 @@
 use bytes::BytesMut;
 
 /// A trait for types that can decode values of type [`Decoder::Output`] from
-/// a bytes buffer of type [`BytesMut`](bytes::BytesMut).
+/// a bytes buffer of type [`Bytes`](bytes::Bytes).
 pub trait Decoder<Item = Self> {
     /// The type of error that can occur if decoding fails.
     type Error;
@@ -20,7 +20,7 @@ pub trait Decoder<Item = Self> {
 mod tests {
     use std::ops::Deref;
 
-    use bytes::Bytes;
+    use bytes::{Bytes, BytesMut};
 
     use crate as recode;
     use crate::{codec::LengthPrefixed, Decoder};
@@ -58,7 +58,7 @@ mod tests {
             b't', b'o', b' ', b'b', b'e', b' ', b'l', b'e', b'f', b't',
         ];
 
-        let mut bytes = bytes::BytesMut::from_iter(BUF.iter());
+        let mut bytes = BytesMut::from_iter(BUF.iter());
         let test = TestType::decode(&mut bytes).unwrap();
 
         assert_eq!(0x01234567, test.age);

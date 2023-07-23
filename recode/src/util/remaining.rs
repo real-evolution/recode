@@ -1,4 +1,4 @@
-use bytes::{BytesMut, Buf};
+use bytes::BytesMut;
 
 /// A to represent a length type with zero length.
 ///
@@ -14,20 +14,20 @@ impl crate::Decoder<usize> for Remaining {
 
     #[inline]
     fn decode(buf: &mut BytesMut) -> Result<usize, Self::Error> {
-        Ok(buf.remaining())
+        Ok(buf.len())
     }
 }
 
-impl<B> crate::Encoder<B, usize> for Remaining {
+impl crate::Encoder<usize> for Remaining {
     type Error = crate::Error;
 
     #[inline]
-    fn encode(_input: &usize, _buf: &mut B) -> Result<(), Self::Error> {
+    fn encode(_input: &usize, _buf: &mut BytesMut) -> Result<(), Self::Error> {
         Ok(())
     }
 
     #[inline]
-    fn size_of(_input: &usize, _: &B) -> usize {
+    fn size_of(_input: &usize) -> usize {
         0
     }
 }

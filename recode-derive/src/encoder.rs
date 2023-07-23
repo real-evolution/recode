@@ -18,7 +18,6 @@ pub(crate) struct Encoder {
 pub(crate) struct EncoderOpts {
     pub(crate) disable: Flag,
     pub(crate) error: Option<syn::Type>,
-    pub(crate) buffer_type: Option<syn::Type>,
     pub(crate) buffer_name: Option<syn::Ident>,
     pub(crate) input_type: Option<syn::Type>,
     pub(crate) input_name: Option<syn::Ident>,
@@ -46,7 +45,6 @@ pub(crate) struct EncoderFieldOpts {
 impl darling::ToTokens for Encoder {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         use quote::quote;
-        use syn::parse::{Parse, Parser};
 
         let Encoder {
             ident,
@@ -56,7 +54,6 @@ impl darling::ToTokens for Encoder {
                 EncoderOpts {
                     disable,
                     error,
-                    buffer_type,
                     buffer_name,
                     input_type,
                     input_name,
@@ -67,8 +64,6 @@ impl darling::ToTokens for Encoder {
             return;
         }
 
-        let mut generics = OwnedGenerics::new(generics.clone());
-
         let input_type = input_type
             .clone()
             .unwrap_or(syn::Type::Verbatim(quote!(Self)));
@@ -77,13 +72,6 @@ impl darling::ToTokens for Encoder {
 
         let error = error.clone().unwrap_or(box_type());
         let buffer_name = buffer_name.clone().unwrap_or(default_buffer_name());
-        let buffer_type = buffer_type.clone().unwrap_or_else(|| {
-            generics.push_impl_param(
-                syn::TypeParam::parse
-                    .parse2(quote!(B: recode::bytes::BufMut))
-                    .unwrap(),
-            )
-        });
 
         let fields: Vec<_> = data
             .as_ref()
@@ -95,19 +83,17 @@ impl darling::ToTokens for Encoder {
             .iter()
             .map(|&f| f.to_encode_stmt(&input_name, &buffer_name));
 
-        let size_exprs = fields
-            .iter()
-            .map(|&f| f.to_size_expr(&input_name, &buffer_name));
+        let size_exprs = fields.iter().map(|&f| f.to_size_expr(&input_name));
 
         let (imp, ty, wher) = generics.split_for_impl();
 
         tokens.extend(quote::quote! {
-            impl #imp recode::Encoder<#buffer_type, #input_type> for #ident #ty #wher {
+            impl #imp recode::Encoder<#input_type> for #ident #ty #wher {
                 type Error = #error;
 
                 fn encode(
                     #input_name: &#input_type,
-                    #buffer_name: &mut #buffer_type,
+                    #buffer_name: &mut recode::bytes::BytesMut,
                 ) -> Result<(), Self::Error> {
                     use recode::Encoder;
 
@@ -116,10 +102,7 @@ impl darling::ToTokens for Encoder {
                     Ok(())
                 }
 
-                fn size_of(
-                    #input_name: &#input_type,
-                    #buffer_name: &#buffer_type
-                ) -> usize {
+                fn size_of(#input_name: &#input_type) -> usize {
                     0 #( + #size_exprs )*
                 }
             }
@@ -159,7 +142,7 @@ impl EncoderField {
             .map(|m| quote! (((#m)(#input_ident.#ident))))
             .unwrap_or(quote! (#input_ident.#ident));
         let stmt = quote! {
-            <#with as recode::Encoder<_, #ty>>::encode(&#input, #buf_ident)?;
+            <#with as recode::Encoder<#ty>>::encode(&#input, #buf_ident)?;
         };
 
         skip_if
@@ -171,7 +154,6 @@ impl EncoderField {
     pub(crate) fn to_size_expr(
         &self,
         input_ident: &syn::Ident,
-        buf_ident: &syn::Ident,
     ) -> proc_macro2::TokenStream {
         use quote::quote;
 
@@ -184,7 +166,7 @@ impl EncoderField {
         let with = self.encoder.with.as_ref().unwrap_or(&self.ty);
 
         quote! {
-            <#with as recode::Encoder<_, #ty>>::size_of(&#input_ident.#ident, #buf_ident)
+            <#with as recode::Encoder<#ty>>::size_of(&#input_ident.#ident)
         }
     }
 }

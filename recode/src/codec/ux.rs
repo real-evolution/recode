@@ -1,8 +1,11 @@
-use crate::bytes::{Buf, BufMut, BytesMut};
-use crate::util::EncoderExt;
-use crate::{Decoder, Encoder};
-
 pub use ux::{i24, i40, i48, i56, u24, u40, u48, u56};
+
+use crate::{
+    bytes::{Buf, BufMut, BytesMut},
+    util::EncoderExt,
+    Decoder,
+    Encoder,
+};
 
 macro_rules! impl_ux {
     ($t:ty; size: $s:literal; rep: $r:ty ) => {
@@ -27,10 +30,13 @@ macro_rules! impl_ux {
             }
         }
 
-        impl<B: BufMut> Encoder<B> for $t {
+        impl Encoder for $t {
             type Error = std::convert::Infallible;
 
-            fn encode(item: &$t, buf: &mut B) -> Result<(), Self::Error> {
+            fn encode(
+                item: &$t,
+                buf: &mut BytesMut,
+            ) -> Result<(), Self::Error> {
                 const REPR_LEN: usize = std::mem::size_of::<$r>();
 
                 let bytes = &<$r>::from(*item).to_be_bytes()[(REPR_LEN - $s)..];
@@ -41,7 +47,7 @@ macro_rules! impl_ux {
             }
 
             #[inline]
-            fn size_of(_: &$t, _: &B) -> usize {
+            fn size_of(_: &$t) -> usize {
                 $s
             }
         }
@@ -58,10 +64,13 @@ macro_rules! impl_ux {
             }
         }
 
-        impl<B: BufMut> Encoder<B, usize> for $t {
+        impl Encoder<usize> for $t {
             type Error = crate::Error;
 
-            fn encode(item: &usize, buf: &mut B) -> Result<(), Self::Error> {
+            fn encode(
+                item: &usize,
+                buf: &mut BytesMut,
+            ) -> Result<(), Self::Error> {
                 let value = <$r>::try_from(*item)
                     .map_err(|_| super::number::TryFromIntError(()))?;
 
@@ -69,7 +78,7 @@ macro_rules! impl_ux {
             }
 
             #[inline]
-            fn size_of(_: &usize, _: &B) -> usize {
+            fn size_of(_: &usize) -> usize {
                 $s
             }
         }
@@ -117,7 +126,7 @@ mod tests {
                     let value = <$t>::new(repr);
                     let mut bytes = BytesMut::new();
 
-                    assert_eq!($s, value.size(&bytes));
+                    assert_eq!($s, value.size());
 
                     value.encode_to(&mut bytes).unwrap();
 
