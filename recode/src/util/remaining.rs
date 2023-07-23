@@ -18,6 +18,18 @@ impl crate::Decoder<usize> for Remaining {
     }
 }
 
+impl crate::RawDecoder<usize> for Remaining {
+    type Error = crate::Error;
+
+    #[inline]
+    fn raw_decode<'a>(buf: &'a [u8]) -> Result<(usize, usize), Self::Error>
+    where
+        usize: 'a,
+    {
+        Ok((buf.len(), 0))
+    }
+}
+
 impl crate::Encoder<usize> for Remaining {
     type Error = crate::Error;
 
