@@ -18,8 +18,10 @@ pub trait Decoder<B, Item = Self> {
 mod tests {
     use std::ops::Deref;
 
+    use bytes::Bytes;
+
     use crate as recode;
-    use crate::Decoder;
+    use crate::{codec::LengthPrefixed, Decoder};
 
     #[test]
     fn basic_test() {
@@ -28,9 +30,12 @@ mod tests {
         struct TestType {
             age: u32,
             salary: u64,
-            first_name: crate::codec::Ascii<u8>,
-            last_name: crate::codec::Utf8<u16>,
-            image: crate::codec::Buffer<u32>,
+            #[recode(decoder(with = "LengthPrefixed::<u8>"))]
+            first_name: Bytes,
+            #[recode(decoder(with = "LengthPrefixed::<u16>"))]
+            last_name: Bytes,
+            #[recode(decoder(with = "LengthPrefixed::<u32>"))]
+            image: Bytes,
         }
 
         const BUF: [u8; 78] = [
@@ -56,8 +61,11 @@ mod tests {
 
         assert_eq!(0x01234567, test.age);
         assert_eq!(0x1122334455667788, test.salary);
-        assert_eq!("ayman", test.first_name.deref());
-        assert_eq!("القاضي", test.last_name.deref());
+        assert_eq!(b"ayman", test.first_name.deref());
+        assert_eq!(
+            "القاضي",
+            std::str::from_utf8(test.last_name.deref()).unwrap()
+        );
         assert_eq!(
             &[
                 0xBA, 0x3E, 0x9D, 0x6B, 0xAE, 0xF5, 0x91, 0xCC, 0xE2, 0xF0,
