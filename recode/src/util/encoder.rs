@@ -2,7 +2,7 @@ use bytes::BytesMut;
 
 use crate::Encoder;
 
-/// An extension trait for [`Encoder`].
+/// An extension trait for [`Encoder`](crate::Encoder).
 pub trait EncoderExt: Encoder + Sized {
     /// Encodes `self` into `buf`.
     ///
