@@ -105,7 +105,7 @@ fn take_n_bytes(buf: &mut BytesMut, len: usize) -> crate::Result<Bytes> {
         });
     }
 
-    Ok(buf.copy_to_bytes(len))
+    Ok(buf.split_to(len).freeze())
 }
 
 #[cfg(test)]
