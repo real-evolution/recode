@@ -5,6 +5,7 @@ use crate::{
     util::EncoderExt,
     Decoder,
     Encoder,
+    RawDecoder,
 };
 
 macro_rules! impl_ux {
@@ -12,7 +13,22 @@ macro_rules! impl_ux {
         impl Decoder for $t {
             type Error = crate::Error;
 
+            #[inline]
             fn decode(buf: &mut BytesMut) -> Result<Self, Self::Error> {
+                let (num, off) = Self::raw_decode(buf)?;
+                buf.advance(off);
+
+                Ok(num)
+            }
+        }
+
+        impl RawDecoder for $t {
+            type Error = crate::Error;
+
+            fn raw_decode<'a>(buf: &'a [u8]) -> Result<($t, usize), Self::Error>
+            where
+                $t: 'a,
+            {
                 const REPR_LEN: usize = std::mem::size_of::<$r>();
 
                 if buf.remaining() < $s {
@@ -24,9 +40,9 @@ macro_rules! impl_ux {
                 }
 
                 let mut be_repr = [0u8; REPR_LEN];
-                buf.copy_to_slice(&mut be_repr[(REPR_LEN - $s)..REPR_LEN]);
+                be_repr[(REPR_LEN - $s)..].copy_from_slice(&buf[..$s]);
 
-                Ok(<$t>::new(<$r>::from_be_bytes(be_repr)))
+                Ok((<$t>::new(<$r>::from_be_bytes(be_repr)), $s))
             }
         }
 
@@ -56,11 +72,30 @@ macro_rules! impl_ux {
             type Error = crate::Error;
 
             fn decode(buf: &mut bytes::BytesMut) -> Result<usize, Self::Error> {
-                let value = <Self as crate::Decoder>::decode(buf)?;
+                let value = <Self as Decoder>::decode(buf)?;
 
                 usize::try_from(<$r>::from(value))
                     .map_err(|_| super::number::TryFromIntError(()))
                     .map_err(Into::into)
+            }
+        }
+
+        impl RawDecoder<usize> for $t {
+            type Error = crate::Error;
+
+            #[inline]
+            fn raw_decode<'a>(
+                buf: &'a [u8],
+            ) -> Result<(usize, usize), Self::Error>
+            where
+                $t: 'a,
+            {
+                let (value, rx) = <Self as RawDecoder>::raw_decode(buf)?;
+                let value: usize = <$r>::from(value)
+                    .try_into()
+                    .map_err(|_| super::number::TryFromIntError(()))?;
+
+                Ok((value, rx))
             }
         }
 
@@ -132,6 +167,17 @@ mod tests {
 
                     assert_eq!($s, bytes.len());
                     assert_eq!(&repr.to_be_bytes()[(REPR_LEN - $s)..], &bytes[..]);
+
+                    let (peek, rx): ($t, usize) =
+                                      <$t>::raw_decode(bytes.chunk()).unwrap();
+
+                    assert_eq!(rx, $s);
+                    assert_eq!(peek, value);
+
+                    let decoded: $t = <$t>::decode(&mut bytes).unwrap();
+
+                    assert_eq!(decoded, value);
+                    assert!(!bytes.has_remaining());
                 }
             }
         };

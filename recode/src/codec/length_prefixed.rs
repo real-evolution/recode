@@ -2,7 +2,13 @@ use std::marker::PhantomData;
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 
-use crate::{util::Remaining, Decoder, Encoder, Error};
+use crate::{
+    util::{BufExt, Remaining},
+    Decoder,
+    Encoder,
+    Error,
+    RawDecoder,
+};
 
 /// A buffer that is not prefixed with its length.
 pub type Unprefixed = LengthPrefixed<Remaining>;
@@ -15,34 +21,42 @@ pub struct LengthPrefixed<L>(PhantomData<L>);
 
 impl<L> Decoder<Bytes> for LengthPrefixed<L>
 where
-    L: Decoder<usize>,
-    Error: From<<L as Decoder<usize>>::Error>,
+    L: RawDecoder<usize>,
+    Error: From<<L as RawDecoder<usize>>::Error>,
 {
     type Error = Error;
 
     #[inline]
     fn decode(buf: &mut BytesMut) -> Result<Bytes, Self::Error> {
-        let len = L::decode(buf)?;
+        let (len, rx) = L::raw_decode(buf.chunk())?;
 
-        take_n_bytes(buf, len)
+        buf.require_n(len)?;
+        buf.advance(rx);
+
+        Ok(buf.copy_to_bytes(len))
     }
 }
 
 impl<L> Decoder<Option<Bytes>> for LengthPrefixed<L>
 where
-    L: Decoder<usize>,
-    Error: From<<L as Decoder<usize>>::Error>,
+    L: RawDecoder<usize>,
+    Error: From<<L as RawDecoder<usize>>::Error>,
 {
     type Error = Error;
 
     #[inline]
     fn decode(buf: &mut BytesMut) -> Result<Option<Bytes>, Self::Error> {
-        let ret = match L::decode(buf)? {
-            | 0 => None,
-            | len => Some(take_n_bytes(buf, len)?),
-        };
+        let (len, rx) = L::raw_decode(buf.chunk())?;
 
-        Ok(ret)
+        if len > 0 {
+            buf.require_n(len)?;
+            buf.advance(rx);
+
+            Ok(Some(buf.copy_to_bytes(len)))
+        } else {
+            buf.advance(rx);
+            Ok(None)
+        }
     }
 }
 
@@ -94,19 +108,6 @@ where
             | None => 0,
         }
     }
-}
-
-#[inline]
-fn take_n_bytes(buf: &mut BytesMut, len: usize) -> crate::Result<Bytes> {
-    if buf.remaining() < len {
-        return Err(Error::BytesNeeded {
-            needed: len - buf.remaining(),
-            full_len: len,
-            available: buf.remaining(),
-        });
-    }
-
-    Ok(buf.split_to(len).freeze())
 }
 
 #[cfg(test)]
@@ -220,7 +221,6 @@ mod tests {
 
                     assert!(use_len < full_len);
                     assert!(pool.len() == full_len);
-
 
                     let buffer = pool.slice(0..use_len);
                     let mut bytes = BytesMut::new();

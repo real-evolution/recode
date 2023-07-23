@@ -3,6 +3,7 @@ use crate::{
     util::EncoderExt,
     Decoder,
     Encoder,
+    RawDecoder,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -38,17 +39,38 @@ macro_rules! impl_int {
 
                 #[inline]
                 fn decode(buf: &mut BytesMut) -> Result<Self, Self::Error> {
-                    const FULL_EN: usize = std::mem::size_of::<$t>();
+                    let (num, off) = Self::raw_decode(buf)?;
+                    buf.advance(off);
 
-                    if buf.remaining() < FULL_EN {
+                    Ok(num)
+                }
+            }
+
+            impl RawDecoder for $t {
+                type Error = crate::Error;
+
+                fn raw_decode<'a>(
+                    buf: &'a [u8]
+                ) -> Result<($t, usize), Self::Error>
+                where
+                    $t: 'a
+                {
+                    const FULL_LEN: usize = std::mem::size_of::<$t>();
+
+                    if buf.len() < FULL_LEN {
                         return Err(crate::Error::BytesNeeded {
-                            needed: FULL_EN - buf.remaining(),
-                            full_len: FULL_EN,
+                            needed: FULL_LEN - buf.remaining(),
+                            full_len: FULL_LEN,
                             available: buf.remaining(),
                         });
                     }
 
-                    Ok(buf.[<get_ $t>]())
+                    let arr: [u8; FULL_LEN] = buf[..FULL_LEN]
+                        .try_into()
+                        .unwrap();
+
+                    Ok((<$t>::from_be_bytes(arr), FULL_LEN))
+
                 }
             }
 
@@ -73,9 +95,26 @@ macro_rules! impl_int {
 
                 #[inline]
                 fn decode(buf: &mut BytesMut) -> Result<usize, Self::Error> {
-                    usize::try_from(<Self as crate::Decoder>::decode(buf)?)
+                    usize::try_from(<Self as Decoder>::decode(buf)?)
                         .map_err(TryFromIntError::from)
                         .map_err(Into::into)
+                }
+            }
+
+            impl RawDecoder<usize> for $t {
+                type Error = crate::Error;
+
+                #[inline]
+                fn raw_decode<'a>(
+                    buf: &'a [u8]
+                ) -> Result<(usize, usize), Self::Error>
+                where
+                    $t: 'a
+                {
+                    let (value, rx) = <Self as RawDecoder>::raw_decode(buf)?;
+                    let value = value.try_into().map_err(TryFromIntError::from)?;
+
+                    Ok((value, rx))
                 }
             }
 
