@@ -27,6 +27,7 @@ struct RecodeField {
     skip: Flag,
     skip_if: Option<syn::Expr>,
     with: Option<syn::Type>,
+    validate: Option<syn::Expr>,
     #[darling(default)]
     decoder: decoder::DecoderFieldOpts,
     #[darling(default)]
@@ -87,6 +88,7 @@ impl Recode {
                     },
                     skip_if: f.skip_if.or(f.encoder.skip_if),
                     with: f.decoder.with.or(f.with),
+                    validate: f.decoder.validate.or(f.validate),
                     ..f.decoder
                 },
             })
@@ -109,6 +111,7 @@ impl Recode {
                     },
                     skip_if: f.skip_if.or(f.encoder.skip_if),
                     with: f.encoder.with.or(f.with),
+                    validate: f.encoder.validate.or(f.validate),
                     ..f.encoder
                 },
             })

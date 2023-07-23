@@ -1,4 +1,5 @@
 use darling::{util::Flag, ToTokens};
+use proc_macro2::TokenStream;
 
 use crate::util::*;
 
@@ -40,6 +41,7 @@ pub(crate) struct EncoderFieldOpts {
     pub(crate) map: Option<syn::Expr>,
     pub(crate) with: Option<syn::Type>,
     pub(crate) size: Option<syn::Expr>,
+    pub(crate) validate: Option<syn::Expr>,
 }
 
 impl darling::ToTokens for Encoder {
@@ -129,6 +131,7 @@ impl EncoderField {
                     map,
                     with,
                     size: _,
+                    validate,
                 },
         } = self;
 
@@ -141,7 +144,13 @@ impl EncoderField {
             .as_ref()
             .map(|m| quote! (((#m)(#input_ident.#ident))))
             .unwrap_or(quote! (#input_ident.#ident));
+        let validate = validate
+            .as_ref()
+            .map(|v| quote!((#v)(&#input_ident.#ident, #buf_ident)?;))
+            .unwrap_or(TokenStream::new());
         let stmt = quote! {
+            #validate
+
             <#with as recode::Encoder<#ty>>::encode(&#input, #buf_ident)?;
         };
 
