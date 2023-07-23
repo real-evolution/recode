@@ -4,7 +4,7 @@ pub mod encode;
 pub mod error;
 pub mod util;
 
-pub use decode::Decoder;
+pub use decode::{Decoder, RawDecoder};
 pub use encode::Encoder;
 pub use error::{Error, Result};
 

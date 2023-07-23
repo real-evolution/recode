@@ -16,6 +16,22 @@ pub trait Decoder<Item = Self> {
     fn decode(buf: &mut BytesMut) -> Result<Item, Self::Error>;
 }
 
+pub trait RawDecoder<Item = Self> {
+    /// The type of error that can occur if decoding fails.
+    type Error;
+
+    /// Decodes a value from the given slice.
+    ///
+    /// # Arguments
+    /// * `buf` - The slice to decode the value from.
+    ///
+    /// # Returns
+    /// The decoded value and the number of bytes read.
+    fn raw_decode<'a>(buf: &'a [u8]) -> Result<(Item, usize), Self::Error>
+    where
+        Item: 'a;
+}
+
 #[cfg(test)]
 mod tests {
     use std::ops::Deref;
