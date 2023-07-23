@@ -1,7 +1,7 @@
-mod remaining;
 mod encoder;
-mod context;
+mod remaining;
 
-pub use remaining::Remaining;
+#[doc(inline)]
 pub use encoder::EncoderExt;
-pub use context::ContextBuffer;
+#[doc(inline)]
+pub use remaining::Remaining;
