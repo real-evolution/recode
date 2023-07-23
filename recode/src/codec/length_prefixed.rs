@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use bytes::{Buf, BufMut, Bytes};
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 
 use crate::{util::Remaining, Decoder, Encoder, Error};
 
@@ -13,32 +13,30 @@ pub type Unprefixed = LengthPrefixed<Remaining>;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct LengthPrefixed<L>(PhantomData<L>);
 
-impl<B, L> Decoder<B, Bytes> for LengthPrefixed<L>
+impl<L> Decoder<Bytes> for LengthPrefixed<L>
 where
-    B: Buf,
-    L: Decoder<B, usize>,
-    Error: From<<L as Decoder<B, usize>>::Error>,
+    L: Decoder<usize>,
+    Error: From<<L as Decoder<usize>>::Error>,
 {
     type Error = Error;
 
     #[inline]
-    fn decode(buf: &mut B) -> Result<Bytes, Self::Error> {
+    fn decode(buf: &mut BytesMut) -> Result<Bytes, Self::Error> {
         let len = L::decode(buf)?;
 
         take_n_bytes(buf, len)
     }
 }
 
-impl<B, L> Decoder<B, Option<Bytes>> for LengthPrefixed<L>
+impl<L> Decoder<Option<Bytes>> for LengthPrefixed<L>
 where
-    B: Buf,
-    L: Decoder<B, usize>,
-    Error: From<<L as Decoder<B, usize>>::Error>,
+    L: Decoder<usize>,
+    Error: From<<L as Decoder<usize>>::Error>,
 {
     type Error = Error;
 
     #[inline]
-    fn decode(buf: &mut B) -> Result<Option<Bytes>, Self::Error> {
+    fn decode(buf: &mut BytesMut) -> Result<Option<Bytes>, Self::Error> {
         let ret = match L::decode(buf)? {
             | 0 => None,
             | len => Some(take_n_bytes(buf, len)?),
@@ -98,7 +96,7 @@ where
 }
 
 #[inline]
-fn take_n_bytes<B: Buf>(buf: &mut B, len: usize) -> crate::Result<Bytes> {
+fn take_n_bytes(buf: &mut BytesMut, len: usize) -> crate::Result<Bytes> {
     if buf.remaining() < len {
         return Err(Error::BytesNeeded {
             needed: len - buf.remaining(),
@@ -109,6 +107,7 @@ fn take_n_bytes<B: Buf>(buf: &mut B, len: usize) -> crate::Result<Bytes> {
 
     Ok(buf.copy_to_bytes(len))
 }
+
 #[cfg(test)]
 mod tests {
     use bytes::{Bytes, BytesMut};

@@ -20,7 +20,6 @@ pub(crate) struct DecoderOpts {
     pub(crate) disable: Flag,
     pub(crate) output_type: Option<syn::Type>,
     pub(crate) error: Option<syn::Type>,
-    pub(crate) buffer_type: Option<syn::Type>,
     pub(crate) buffer_name: Option<syn::Ident>,
 }
 
@@ -46,7 +45,6 @@ pub(crate) struct DecoderFieldOpts {
 impl darling::ToTokens for Decoder {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use quote::quote;
-        use syn::parse::{Parse, Parser};
 
         let Decoder {
             ident,
@@ -57,7 +55,6 @@ impl darling::ToTokens for Decoder {
                     disable,
                     output_type,
                     error,
-                    buffer_type,
                     buffer_name,
                 },
         } = self;
@@ -66,20 +63,11 @@ impl darling::ToTokens for Decoder {
             return;
         }
 
-        let mut generics = OwnedGenerics::new(generics.clone());
-
         let output_type = output_type
             .clone()
             .unwrap_or(syn::Type::Verbatim(quote!(Self)));
         let error = error.clone().unwrap_or(box_type());
         let buffer_name = buffer_name.clone().unwrap_or(default_buffer_name());
-        let buffer_type = buffer_type.clone().unwrap_or_else(|| {
-            generics.push_impl_param(
-                syn::TypeParam::parse
-                    .parse2(quote!(B: recode::bytes::Buf))
-                    .unwrap(),
-            )
-        });
 
         let fields: Vec<_> = data
             .as_ref()
@@ -94,11 +82,11 @@ impl darling::ToTokens for Decoder {
         let (imp, ty, wher) = generics.split_for_impl();
 
         tokens.extend(quote::quote! {
-            impl #imp recode::Decoder<#buffer_type, #output_type> for #ident #ty #wher {
+            impl #imp recode::Decoder<#output_type> for #ident #ty #wher {
                 type Error = #error;
 
                 fn decode(
-                    #buffer_name: &mut #buffer_type
+                    #buffer_name: &mut recode::bytes::BytesMut,
                 ) -> Result<#output_type, Self::Error>
                 {
                     use recode::Decoder;
@@ -156,14 +144,14 @@ impl DecoderField {
                 let #ident = if #skip_if {
                     Default::default()
                 } else {
-                    <#with as recode::Decoder<_, #ty>>::decode(#buf_ident) #map ?
+                    <#with as recode::Decoder<#ty>>::decode(#buf_ident) #map ?
                 };
 
                 #validate
             }
         } else {
             quote::quote! {
-                let #ident = <#with as recode::Decoder<_, #ty>>::decode(#buf_ident) #map ?;
+                let #ident = <#with as recode::Decoder<#ty>>::decode(#buf_ident) #map ?;
 
                 #validate
             }

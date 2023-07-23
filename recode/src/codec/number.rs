@@ -1,6 +1,9 @@
-use crate::bytes::{Buf, BufMut};
-use crate::util::EncoderExt;
-use crate::{Decoder, Encoder};
+use crate::{
+    bytes::{Buf, BytesMut, BufMut},
+    util::EncoderExt,
+    Decoder,
+    Encoder,
+};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TryFromIntError(pub(crate) ());
@@ -30,11 +33,11 @@ impl std::error::Error for TryFromIntError {}
 macro_rules! impl_int {
     ($t:ty) => {
         paste::paste! {
-            impl<B: Buf> Decoder<B> for $t {
+            impl Decoder for $t {
                 type Error = crate::Error;
 
                 #[inline]
-                fn decode(buf: &mut B) -> Result<Self, Self::Error> {
+                fn decode(buf: &mut BytesMut) -> Result<Self, Self::Error> {
                     const FULL_EN: usize = std::mem::size_of::<$t>();
 
                     if buf.remaining() < FULL_EN {
@@ -65,12 +68,12 @@ macro_rules! impl_int {
                 }
             }
 
-            impl<B: Buf> Decoder<B, usize> for $t {
+            impl Decoder<usize> for $t {
                 type Error = crate::Error;
 
                 #[inline]
-                fn decode(buf: &mut B) -> Result<usize, Self::Error> {
-                    usize::try_from(<Self as crate::Decoder<B>>::decode(buf)?)
+                fn decode(buf: &mut BytesMut) -> Result<usize, Self::Error> {
+                    usize::try_from(<Self as crate::Decoder>::decode(buf)?)
                         .map_err(TryFromIntError::from)
                         .map_err(Into::into)
                 }

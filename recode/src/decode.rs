@@ -1,6 +1,8 @@
+use bytes::BytesMut;
+
 /// A trait for types that can decode values of type [`Decoder::Output`] from
-/// a bytes buffer of type [`B`].
-pub trait Decoder<B, Item = Self> {
+/// a bytes buffer of type [`BytesMut`](bytes::BytesMut).
+pub trait Decoder<Item = Self> {
     /// The type of error that can occur if decoding fails.
     type Error;
 
@@ -11,7 +13,7 @@ pub trait Decoder<B, Item = Self> {
     ///
     /// # Returns
     /// The decoded value.
-    fn decode(buf: &mut B) -> Result<Item, Self::Error>;
+    fn decode(buf: &mut BytesMut) -> Result<Item, Self::Error>;
 }
 
 #[cfg(test)]
@@ -56,7 +58,7 @@ mod tests {
             b't', b'o', b' ', b'b', b'e', b' ', b'l', b'e', b'f', b't',
         ];
 
-        let mut bytes = bytes::Bytes::from_static(&BUF);
+        let mut bytes = bytes::BytesMut::from_iter(BUF.iter());
         let test = TestType::decode(&mut bytes).unwrap();
 
         assert_eq!(0x01234567, test.age);

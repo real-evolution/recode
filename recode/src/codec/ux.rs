@@ -1,4 +1,4 @@
-use crate::bytes::{Buf, BufMut};
+use crate::bytes::{Buf, BufMut, BytesMut};
 use crate::util::EncoderExt;
 use crate::{Decoder, Encoder};
 
@@ -6,10 +6,10 @@ pub use ux::{i24, i40, i48, i56, u24, u40, u48, u56};
 
 macro_rules! impl_ux {
     ($t:ty; size: $s:literal; rep: $r:ty ) => {
-        impl<B: Buf> Decoder<B> for $t {
+        impl Decoder for $t {
             type Error = crate::Error;
 
-            fn decode(buf: &mut B) -> Result<Self, Self::Error> {
+            fn decode(buf: &mut BytesMut) -> Result<Self, Self::Error> {
                 const REPR_LEN: usize = std::mem::size_of::<$r>();
 
                 if buf.remaining() < $s {
@@ -46,11 +46,11 @@ macro_rules! impl_ux {
             }
         }
 
-        impl<B: Buf> Decoder<B, usize> for $t {
+        impl Decoder<usize> for $t {
             type Error = crate::Error;
 
-            fn decode(buf: &mut B) -> Result<usize, Self::Error> {
-                let value = <Self as crate::Decoder<B>>::decode(buf)?;
+            fn decode(buf: &mut bytes::BytesMut) -> Result<usize, Self::Error> {
+                let value = <Self as crate::Decoder>::decode(buf)?;
 
                 usize::try_from(<$r>::from(value))
                     .map_err(|_| super::number::TryFromIntError(()))
