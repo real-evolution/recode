@@ -19,6 +19,24 @@ pub type Unprefixed = LengthPrefixed<Remaining>;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct LengthPrefixed<L>(PhantomData<L>);
 
+impl<L> Decoder<BytesMut> for LengthPrefixed<L>
+where
+    L: RawDecoder<usize>,
+    Error: From<<L as RawDecoder<usize>>::Error>,
+{
+    type Error = Error;
+
+    #[inline]
+    fn decode(buf: &mut BytesMut) -> Result<BytesMut, Self::Error> {
+        let (len, rx) = L::raw_decode(buf.chunk())?;
+
+        buf.require_n(len)?;
+        buf.advance(rx);
+
+        Ok(buf.split_to(len))
+    }
+}
+
 impl<L> Decoder<Bytes> for LengthPrefixed<L>
 where
     L: RawDecoder<usize>,
@@ -28,85 +46,32 @@ where
 
     #[inline]
     fn decode(buf: &mut BytesMut) -> Result<Bytes, Self::Error> {
-        let (len, rx) = L::raw_decode(buf.chunk())?;
-
-        buf.require_n(len)?;
-        buf.advance(rx);
-
-        Ok(buf.copy_to_bytes(len))
+        <Self as Decoder<BytesMut>>::decode(buf).map(BytesMut::freeze)
     }
 }
 
-impl<L> Decoder<Option<Bytes>> for LengthPrefixed<L>
+impl<L, T> Encoder<T> for LengthPrefixed<L>
 where
-    L: RawDecoder<usize>,
-    Error: From<<L as RawDecoder<usize>>::Error>,
-{
-    type Error = Error;
-
-    #[inline]
-    fn decode(buf: &mut BytesMut) -> Result<Option<Bytes>, Self::Error> {
-        let (len, rx) = L::raw_decode(buf.chunk())?;
-
-        if len > 0 {
-            buf.require_n(len)?;
-            buf.advance(rx);
-
-            Ok(Some(buf.copy_to_bytes(len)))
-        } else {
-            buf.advance(rx);
-            Ok(None)
-        }
-    }
-}
-
-impl<L> Encoder<Bytes> for LengthPrefixed<L>
-where
+    T: AsRef<[u8]>,
     L: Encoder<usize>,
     Error: From<<L as Encoder<usize>>::Error>,
 {
     type Error = Error;
 
-    fn encode(item: &Bytes, buf: &mut BytesMut) -> Result<(), Self::Error> {
-        let len = item.len();
+    fn encode(item: &T, buf: &mut BytesMut) -> Result<(), Self::Error> {
+        let slice = item.as_ref();
 
-        L::encode(&len, buf)?;
-        buf.put_slice(item.as_ref());
+        L::encode(&slice.len(), buf)?;
+        buf.put_slice(slice);
 
         Ok(())
     }
 
     #[inline]
-    fn size_of(item: &Bytes) -> usize {
-        L::size_of(&item.len()) + item.len()
-    }
-}
+    fn size_of(item: &T) -> usize {
+        let slice = item.as_ref();
 
-impl<L> Encoder<Option<Bytes>> for LengthPrefixed<L>
-where
-    L: Encoder<usize> + Default,
-    Error: From<<L as Encoder<usize>>::Error>,
-{
-    type Error = Error;
-
-    fn encode(
-        item: &Option<Bytes>,
-        buf: &mut BytesMut,
-    ) -> Result<(), Self::Error> {
-        let Some(buffer) = item else {
-            L::encode(&0, buf)?;
-            return Ok(());
-        };
-
-        Self::encode(buffer, buf)
-    }
-
-    #[inline]
-    fn size_of(item: &Option<Bytes>) -> usize {
-        match item {
-            | Some(item) => Self::size_of(item),
-            | None => 0,
-        }
+        L::size_of(&slice.len()) + slice.len()
     }
 }
 
@@ -122,37 +87,6 @@ mod tests {
         Decoder,
         Encoder,
     };
-
-    #[test]
-    fn optional_unprefixed_test() {
-        let buffer: Option<Bytes> =
-            Unprefixed::decode(&mut BytesMut::new()).unwrap();
-
-        assert!(buffer.is_none());
-
-        let len: usize = (128..=10240).fake();
-        let bytes = BytesMut::from_iter((0..len).map(|_| Faker.fake::<u8>()));
-
-        assert_eq!(len, bytes.len());
-
-        let buffer: Option<Bytes> =
-            Unprefixed::decode(&mut bytes.clone()).unwrap();
-        let buffer = buffer.unwrap();
-
-        assert_eq!(buffer.len(), len);
-        assert_eq!(buffer.as_ref(), bytes.as_ref());
-        assert_eq!(Unprefixed::size_of(&buffer), len);
-
-        let mut encoded = BytesMut::new();
-        Unprefixed::encode(&Bytes::default(), &mut encoded).unwrap();
-
-        assert!(encoded.is_empty());
-
-        Unprefixed::encode(&buffer, &mut encoded).unwrap();
-
-        assert_eq!(encoded.len(), len);
-        assert_eq!(encoded.as_ref(), buffer.as_ref());
-    }
 
     #[test]
     fn unprefixed_decode_test() {
@@ -229,17 +163,6 @@ mod tests {
                         LengthPrefixed::<$t>::size_of(&buffer),
                         buffer.len() + <$t>::size_of(&buffer.len())
                     );
-
-                    LengthPrefixed::<$t>::encode(&None, &mut bytes).unwrap();
-
-                    assert_eq!(bytes.len(), $s);
-                    assert!(bytes.iter().all(|&b| b == 0));
-
-                    let decoded: Option<Bytes> = LengthPrefixed::<$t>::decode(&mut bytes)
-                        .unwrap();
-
-                    assert!(decoded.is_none());
-                    assert!(bytes.is_empty());
 
                     LengthPrefixed::<$t>::encode(&buffer, &mut bytes).unwrap();
 
