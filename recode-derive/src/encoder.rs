@@ -73,7 +73,7 @@ impl darling::ToTokens for Encoder {
             input_name.clone().unwrap_or(quote::format_ident!("input"));
 
         let error = error.clone().unwrap_or(box_type());
-        let buffer_name = buffer_name.clone().unwrap_or(default_buffer_name());
+        let buf_name = buffer_name.clone().unwrap_or(default_buffer_name());
 
         let fields: Vec<_> = data
             .as_ref()
@@ -81,11 +81,9 @@ impl darling::ToTokens for Encoder {
             .expect("only structs are supported")
             .fields;
 
-        let field_stmts = fields
-            .iter()
-            .map(|&f| f.to_encode_stmt(&input_name, &buffer_name));
-
-        let size_exprs = fields.iter().map(|&f| f.to_size_expr(&input_name));
+        let field_names = fields.iter().map(|&f| &f.ident);
+        let field_stmts = fields.iter().map(|&f| f.to_encode_stmt(&buf_name));
+        let field_sizes = fields.iter().map(|&f| f.to_size_expr(&input_name));
 
         let (imp, ty, wher) = generics.split_for_impl();
 
@@ -95,9 +93,13 @@ impl darling::ToTokens for Encoder {
 
                 fn encode(
                     #input_name: &#input_type,
-                    #buffer_name: &mut recode::bytes::BytesMut,
+                    #buf_name: &mut recode::bytes::BytesMut,
                 ) -> Result<(), Self::Error> {
                     use recode::Encoder;
+
+                    let #input_type {
+                        #( #field_names, )*
+                    } = #input_name;
 
                     #( #field_stmts )*
 
@@ -105,7 +107,7 @@ impl darling::ToTokens for Encoder {
                 }
 
                 fn size_of(#input_name: &#input_type) -> usize {
-                    0 #( + #size_exprs )*
+                    0 #( + #field_sizes )*
                 }
             }
 
@@ -116,7 +118,6 @@ impl darling::ToTokens for Encoder {
 impl EncoderField {
     pub(crate) fn to_encode_stmt(
         &self,
-        input_ident: &syn::Ident,
         buf_ident: &syn::Ident,
     ) -> proc_macro2::TokenStream {
         use quote::quote;
@@ -142,16 +143,15 @@ impl EncoderField {
         let with = with.as_ref().unwrap_or(ty);
         let input = map
             .as_ref()
-            .map(|m| quote! (((#m)(#input_ident.#ident))))
-            .unwrap_or(quote! (#input_ident.#ident));
+            .map(|m| quote! (((#m)(#ident))))
+            .unwrap_or(quote! (#ident));
         let validate = validate
             .as_ref()
-            .map(|v| quote!((#v)(&#input_ident.#ident, #buf_ident)?;))
+            .map(|v| quote!((#v)(#ident, #buf_ident)?;))
             .unwrap_or(TokenStream::new());
         let stmt = quote! {
             #validate
-
-            <#with as recode::Encoder<#ty>>::encode(&#input, #buf_ident)?;
+            <#with as recode::Encoder<#ty>>::encode(#input, #buf_ident)?;
         };
 
         skip_if
