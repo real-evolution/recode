@@ -141,7 +141,7 @@ impl DecoderField {
 
         if let Some(ref skip_if) = skip_if {
             quote::quote! {
-                let #ident = if #skip_if {
+                let #ident = if (#skip_if) {
                     Default::default()
                 } else {
                     <#with as recode::Decoder<#ty>>::decode(#buf_ident) #map ?

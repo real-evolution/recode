@@ -98,7 +98,7 @@ impl darling::ToTokens for Encoder {
                     use recode::Encoder;
 
                     let #input_type {
-                        #( #field_names, )*
+                        #( ref #field_names, )*
                     } = #input_name;
 
                     #( #field_stmts )*
