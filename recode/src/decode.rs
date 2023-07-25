@@ -14,6 +14,14 @@ pub trait Decoder<Item = Self> {
     /// # Returns
     /// The decoded value.
     fn decode(buf: &mut BytesMut) -> Result<Item, Self::Error>;
+
+    /// Returns `true` if the given buffer can be decoded.
+    ///
+    /// This is used to determine if the buffer has enough bytes to decode a
+    /// value.
+    fn has_enough_bytes(_buf: &BytesMut) -> bool {
+        true
+    }
 }
 
 pub trait RawDecoder<Item = Self> {

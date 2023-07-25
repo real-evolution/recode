@@ -44,6 +44,11 @@ macro_rules! impl_int {
 
                     Ok(num)
                 }
+
+                #[inline]
+                fn has_enough_bytes(buf: &BytesMut) -> bool {
+                    buf.remaining() >= std::mem::size_of::<$t>()
+                }
             }
 
             impl RawDecoder for $t {
@@ -70,7 +75,6 @@ macro_rules! impl_int {
                         .unwrap();
 
                     Ok((<$t>::from_be_bytes(arr), FULL_LEN))
-
                 }
             }
 
@@ -98,6 +102,11 @@ macro_rules! impl_int {
                     usize::try_from(<Self as Decoder>::decode(buf)?)
                         .map_err(TryFromIntError::from)
                         .map_err(Into::into)
+                }
+
+                #[inline]
+                fn has_enough_bytes(buf: &BytesMut) -> bool {
+                    <Self as Decoder>::has_enough_bytes(buf)
                 }
             }
 

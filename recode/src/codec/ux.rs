@@ -9,7 +9,7 @@ use crate::{
 };
 
 macro_rules! impl_ux {
-    ($t:ty; size: $s:literal; rep: $r:ty ) => {
+    ($t:ty; size: $s:literal; rep: $r:ty) => {
         impl Decoder for $t {
             type Error = crate::Error;
 
@@ -19,6 +19,11 @@ macro_rules! impl_ux {
                 buf.advance(off);
 
                 Ok(num)
+            }
+
+            #[inline]
+            fn has_enough_bytes(buf: &BytesMut) -> bool {
+                buf.remaining() >= $s
             }
         }
 
@@ -77,6 +82,11 @@ macro_rules! impl_ux {
                 usize::try_from(<$r>::from(value))
                     .map_err(|_| super::number::TryFromIntError(()))
                     .map_err(Into::into)
+            }
+
+            #[inline]
+            fn has_enough_bytes(buf: &BytesMut) -> bool {
+                <Self as Decoder>::has_enough_bytes(buf)
             }
         }
 
