@@ -1,0 +1,13 @@
+[package]
+name = "recode-util"
+version = "0.1.0"
+description = "Utilities for `recode` crate"
+keywords = ["framed", "codec", "encode", "decode"]
+edition.workspace = true
+authors.workspace = true
+readme.workspace = true
+publish.workspace = true
+repository.workspace = true
+license-file.workspace = true
+
+[dependencies]

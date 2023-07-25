@@ -1,5 +1,5 @@
 [workspace]
-members = ["recode", "recode-derive"]
+members = ["recode", "recode-derive", "recode-util"]
 resolver = "2"
 
 [workspace.package]
