@@ -17,7 +17,7 @@ default = ["framed"]
 framed = ["tokio-util/codec"]
 
 [dependencies]
-recode = { version = "0.5.0-alpha.1", path = "../recode" }
+recode = { version = "0.5.0-alpha.3", path = "../recode" }
 bytes = { version = "1" }
 
 # optional dependencies
