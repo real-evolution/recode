@@ -1,4 +1,4 @@
 pub mod length_delimited;
 
 #[doc(inline)]
-pub use length_delimited::{LengthDelimitedCodec, LengthDelimitedFrame};
+pub use length_delimited::LengthDelimitedCodec;

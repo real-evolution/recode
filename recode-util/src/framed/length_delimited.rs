@@ -4,27 +4,13 @@ use bytes::{Buf, BytesMut};
 use recode::{util::EncoderExt, Decoder, Encoder};
 use tokio_util::codec::{Decoder as TokioDecoder, Encoder as TokioEncoder};
 
-/// Trait for frames that can be decoded for encoded as a length-delimited
-/// sequence of bytes.
-pub trait LengthDelimitedFrame<L>: Decoder + Encoder + Sized
-where
-    L: Decoder<usize> + Encoder<usize>,
-{
-    /// Error type that can be returned when decoding/encoding a frame.
-    type Error: From<std::io::Error>
-        + From<<Self as Decoder>::Error>
-        + From<<Self as Encoder>::Error>
-        + From<<L as Decoder<usize>>::Error>
-        + From<<L as Encoder<usize>>::Error>;
-}
-
 /// A codec for decoding and decoding length-delimited frames that implement
 /// [`LengthDelimitedFrame`].
-#[derive(Debug, Clone)]
-pub struct LengthDelimitedCodec<F, L> {
+#[derive(Debug)]
+pub struct LengthDelimitedCodec<L, F, E> {
     max_frame_len: usize,
     state: DecodeState,
-    _marker: PhantomData<fn() -> (F, L)>,
+    _marker: PhantomData<(L, F, E)>,
 }
 
 /// Error returned when decoding a frame.
@@ -37,7 +23,7 @@ enum DecodeState {
     Data(usize),
 }
 
-impl<F, L> LengthDelimitedCodec<F, L> {
+impl<L, F, E> LengthDelimitedCodec<L, F, E> {
     /// Create a new [`LengthDelimitedCodec`] instance for [`F`].
     #[inline]
     pub const fn new(max_frame_len: usize) -> Self {
@@ -49,12 +35,15 @@ impl<F, L> LengthDelimitedCodec<F, L> {
     }
 }
 
-impl<F, L> TokioDecoder for LengthDelimitedCodec<F, L>
+impl<L, F, E> TokioDecoder for LengthDelimitedCodec<L, F, E>
 where
-    F: LengthDelimitedFrame<L>,
-    L: Decoder<usize> + Encoder<usize>,
+    L: Decoder<usize>,
+    F: Decoder,
+    E: From<std::io::Error>
+        + From<<L as Decoder<usize>>::Error>
+        + From<<F as Decoder>::Error>,
 {
-    type Error = <F as LengthDelimitedFrame<L>>::Error;
+    type Error = E;
     type Item = F;
 
     fn decode(
@@ -106,12 +95,15 @@ where
     }
 }
 
-impl<F, L> TokioEncoder<F> for LengthDelimitedCodec<F, L>
+impl<L, F, E> TokioEncoder<F> for LengthDelimitedCodec<L, F, E>
 where
-    F: LengthDelimitedFrame<L>,
-    L: Decoder<usize> + Encoder<usize>,
+    L: Encoder<usize>,
+    F: Encoder,
+    E: From<std::io::Error>
+        + From<<L as Encoder<usize>>::Error>
+        + From<<F as Encoder>::Error>,
 {
-    type Error = <F as LengthDelimitedFrame<L>>::Error;
+    type Error = E;
 
     fn encode(
         &mut self,
