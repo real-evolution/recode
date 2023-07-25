@@ -6,27 +6,25 @@ use tokio_util::codec::{Decoder as TokioDecoder, Encoder as TokioEncoder};
 
 /// Trait for frames that can be decoded for encoded as a length-delimited
 /// sequence of bytes.
-pub trait LengthDelimitedFrame: Decoder + Encoder + Sized {
-    /// Maximum frame length.
-    const MAX_FRAME_LEN: usize = 8 * 1024 * 1024;
-
-    /// Type representing the length of a frame.
-    type Length: Decoder<usize> + Encoder<usize>;
-
+pub trait LengthDelimitedFrame<L>: Decoder + Encoder + Sized
+where
+    L: Decoder<usize> + Encoder<usize>,
+{
     /// Error type that can be returned when decoding/encoding a frame.
     type Error: From<std::io::Error>
         + From<<Self as Decoder>::Error>
         + From<<Self as Encoder>::Error>
-        + From<<Self::Length as Decoder<usize>>::Error>
-        + From<<Self::Length as Encoder<usize>>::Error>;
+        + From<<L as Decoder<usize>>::Error>
+        + From<<L as Encoder<usize>>::Error>;
 }
 
 /// A codec for decoding and decoding length-delimited frames that implement
 /// [`LengthDelimitedFrame`].
 #[derive(Debug, Clone)]
-pub struct LengthDelimitedCodec<F> {
+pub struct LengthDelimitedCodec<F, L> {
+    max_frame_len: usize,
     state: DecodeState,
-    _marker: PhantomData<F>,
+    _marker: PhantomData<fn() -> (F, L)>,
 }
 
 /// Error returned when decoding a frame.
@@ -39,22 +37,24 @@ enum DecodeState {
     Data(usize),
 }
 
-impl<F> LengthDelimitedCodec<F> {
+impl<F, L> LengthDelimitedCodec<F, L> {
     /// Create a new [`LengthDelimitedCodec`] instance for [`F`].
     #[inline]
-    pub const fn new() -> Self {
+    pub const fn new(max_frame_len: usize) -> Self {
         Self {
+            max_frame_len,
             state: DecodeState::Head,
             _marker: PhantomData,
         }
     }
 }
 
-impl<F> TokioDecoder for LengthDelimitedCodec<F>
+impl<F, L> TokioDecoder for LengthDelimitedCodec<F, L>
 where
-    F: LengthDelimitedFrame,
+    F: LengthDelimitedFrame<L>,
+    L: Decoder<usize> + Encoder<usize>,
 {
-    type Error = <F as LengthDelimitedFrame>::Error;
+    type Error = <F as LengthDelimitedFrame<L>>::Error;
     type Item = F;
 
     fn decode(
@@ -63,8 +63,18 @@ where
     ) -> Result<Option<Self::Item>, Self::Error> {
         match self.state {
             | DecodeState::Head => {
-                if <F::Length>::has_enough_bytes(src) {
-                    let len = <F::Length>::decode(src)?;
+                if L::has_enough_bytes(src) {
+                    let len = L::decode(src)?;
+
+                    if len > self.max_frame_len {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            LengthDelimitedCodecError(
+                                "frame length exceeds maximum",
+                            ),
+                        ))?;
+                    }
+
                     src.reserve(len);
                     self.state = DecodeState::Data(len);
                 }
@@ -96,11 +106,12 @@ where
     }
 }
 
-impl<F> TokioEncoder<F> for LengthDelimitedCodec<F>
+impl<F, L> TokioEncoder<F> for LengthDelimitedCodec<F, L>
 where
-    F: LengthDelimitedFrame,
+    F: LengthDelimitedFrame<L>,
+    L: Decoder<usize> + Encoder<usize>,
 {
-    type Error = <F as LengthDelimitedFrame>::Error;
+    type Error = <F as LengthDelimitedFrame<L>>::Error;
 
     fn encode(
         &mut self,
@@ -111,7 +122,7 @@ where
 
         dst.reserve(len);
 
-        <F::Length>::encode(&len, dst)?;
+        <L>::encode(&len, dst)?;
         <F>::encode(&item, dst)?;
 
         Ok(())
