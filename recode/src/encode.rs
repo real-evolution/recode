@@ -8,9 +8,6 @@ pub trait Encoder<Item = Self> {
 
     /// Encodes the given input into the output buffer.
     ///
-    /// This method does not return a result because calls to
-    /// [`Encoder::encode`] never do.
-    ///
     /// # Arguments
     /// * `item` - The input to encode.
     /// * `buf` - The output buffer to write the encoded input to.

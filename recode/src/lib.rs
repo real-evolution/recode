@@ -4,11 +4,12 @@ pub mod encode;
 pub mod error;
 pub mod util;
 
+/// Re-export of [`bytes`](https://docs.rs/bytes) crate.
+pub use bytes;
+#[doc(inline)]
 pub use decode::{Decoder, RawDecoder};
+#[doc(inline)]
 pub use encode::Encoder;
 pub use error::{Error, Result};
-
-pub use bytes;
-
 #[cfg(feature = "derive")]
 pub use recode_derive::{Decoder, Encoder, Recode};
